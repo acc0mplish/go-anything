@@ -204,7 +204,7 @@ cmd/go-anything/       CLI 배선과 명령 레지스트리
 internal/domain/       케이스, 비교, 보고서, 체크리스트 모델 (순수 함수)
 internal/usecase/      녹화, 검증, refine 규칙, 재작성 생성
 internal/adapter/      app 러너, wire gen, analyze(go·py·js·c·java), secure 스캔, mcp
-docs/                  STATUS · HARDENING · RSI_PLAN · DECISIONS · INSTALL
+docs/                  STATUS · HARDENING · RSI_PLAN · DECISIONS
 ```
 
 생성되는 유닛 테스트는 `internal/domain/compare.go`를 그대로 복사해 씁니다.

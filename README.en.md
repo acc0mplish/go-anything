@@ -97,7 +97,7 @@ cmd/go-anything/       CLI wiring and command registry
 internal/domain/       cases, comparison, reports, checklist model (pure)
 internal/usecase/      recording, verification, refine rules, rewrite generation
 internal/adapter/      app runner, wire gen, analyze (go/py/js/c/java), secure scan, mcp
-docs/                  STATUS, HARDENING, RSI_PLAN, DECISIONS, INSTALL
+docs/                  STATUS, HARDENING, RSI_PLAN, DECISIONS
 ```
 
 The comparison code a generated unit test uses is copied from `internal/domain/compare.go` itself, so the tool and the rewrite's own `go test` judge answers by the same rules.
