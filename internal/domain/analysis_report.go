@@ -621,6 +621,7 @@ var analysisFuncs = template.FuncMap{
 	"dirNote":  dirNote,
 	"relText":  RelText,
 	"bi":       biHTML,
+	"biIn":     biInlineHTML,
 }
 
 var analysisTemplate = template.Must(template.New("analysis").Funcs(analysisFuncs).Parse(`<!DOCTYPE html>
@@ -652,42 +653,42 @@ var analysisTemplate = template.Must(template.New("analysis").Funcs(analysisFunc
 <p class="meta">Root <code>{{.Root}}</code> · version {{.Version}}{{if .GeneratedAt}} · generated {{.GeneratedAt}}{{end}} · original in {{.LanguageName}} · units are its modules, named in its own notation; the Go package column is where each one lands in the Go rewrite</p>
 {{- end}}
 <nav class="toc">
-  <a href="#bottom-line">{{bi "Bottom line" "결론"}}</a>
-  <a href="#summary">{{bi "Summary" "요약"}}</a>
-  <a href="#changes">{{bi "Changes" "변경 사항"}}</a>
+  <a href="#summary">{{biIn "Summary" "요약"}}</a>
+  <a href="#bottom-line">{{biIn "Bottom line" "결론"}}</a>
+  <a href="#changes">{{biIn "Changes" "변경 사항"}}</a>
   {{- if .StartHere}}
-  <a href="#start-here">{{bi "Start here" "여기서 시작"}}</a>
+  <a href="#start-here">{{biIn "Start here" "여기서 시작"}}</a>
   {{- end}}
-  <a href="#order">{{bi "Porting order" "포팅 순서"}}</a>
+  <a href="#order">{{biIn "Porting 순서" "포팅 순서"}}</a>
   {{- if .Risks}}
-  <a href="#risks">{{bi "Risks" "위험"}}</a>
+  <a href="#risks">{{biIn "Risks" "위험"}}</a>
   {{- end}}
-  <a href="#packages">{{if .IsGo}}{{bi "Packages" "패키지"}}{{else}}{{bi "Modules" "모듈"}}{{end}}</a>
-  <a href="#how">{{bi "How to read this" "읽는 법"}}</a>
+  <a href="#packages">{{if .IsGo}}{{biIn "Packages" "패키지"}}{{else}}{{biIn "Modules" "모듈"}}{{end}}</a>
+  <a href="#how">{{biIn "How to read this" "읽는 법"}}</a>
 </nav>
 
-<div class="banner info" id="bottom-line">
-  <strong class="verdict">{{bi "Bottom line" "결론"}}</strong>
-  {{- range .BottomLine}}
-  <p>{{.}}</p>
+<h2 id="summary">{{biIn "Summary" "요약"}}</h2>
+<div class="cards">
+  {{/* The Packages/Modules title line stays bare for compactness; the Korean line mirrors it at the card foot. */}}
+  <div class="card"><div class="k">{{if .IsGo}}{{biIn "Packages" "패키지"}}{{else}}{{biIn "Modules" "모듈"}}{{end}}</div><div class="v">{{len .Packages}}</div><div class="s">{{if .Delta}}{{change .Delta.Packages}} vs v{{.Delta.PrevVersion}}{{else}}{{.Exported}} exported funcs{{end}}</div></div>
+  <div class="card"><div class="k">{{biIn "Lines" "라인 수"}}</div><div class="v">{{.Lines}}</div><div class="s">{{if .Delta}}{{change .Delta.Lines}} vs v{{.Delta.PrevVersion}}{{else}}non-test {{.LanguageName}} lines{{end}}</div></div>
+  {{- if .Functions}}
+  <div class="card"><div class="k">{{biIn "Functions" "함수"}}</div><div class="v">{{.Functions}}</div><div class="s">{{if .Delta}}{{change .Delta.Functions}} vs v{{.Delta.PrevVersion}}{{else}}{{if .IsGo}}functions and methods{{else}}top-level functions{{end}}{{end}}</div></div>
+  {{/* The Static call edges and Dynamic calls title lines stay bare for compactness; the Korean line mirrors them at the card foot. */}}
+  <div class="card"><div class="k">{{biIn "Static call edges" "정적 호출 간선"}}</div><div class="v">{{.CallEdges}}</div><div class="s">{{if .Delta}}{{change .Delta.CallEdges}} vs v{{.Delta.PrevVersion}}{{else}}{{if .IsGo}}inside the module{{else}}inside the repo, direct calls only{{end}}{{end}}</div>
+  {{- if .IsGo}}
+  <div class="card{{if .DynamicCalls}} warn{{end}}"><div class="k">{{biIn "Dynamic calls" "동적 호출"}}</div><div class="v">{{.DynamicCalls}}</div><div class="s">{{with .DynamicShare}}{{.}} unresolved{{end}}{{if .Delta}}{{if .DynamicShare}} · {{end}}{{change .Delta.DynamicCalls}} vs v{{.Delta.PrevVersion}}{{end}}</div>
+  {{- end}}
+  {{/* The Risk sites title line stays bare for compactness; the Korean line mirrors it at the card foot. */}}
+  <div class="card"><div class="k">{{biIn "Risk sites" "위험 지점"}}</div><div class="v">{{.RisksTotal}}</div><div class="s">{{if .Delta}}{{change .Delta.Risks}} vs v{{.Delta.PrevVersion}}{{else}}{{len .RiskKinds}} kinds{{end}}</div>
+  <div class="card ok"><div class="k">{{biIn "Start here" "여기서 시작"}}</div><div class="v">{{.StartHereTotal}}</div><div class="s">{{if .Delta}}{{change .Delta.StartHere}} vs v{{.Delta.PrevVersion}}{{else}}first-port candidates{{end}}</div></div>
   {{- end}}
 </div>
 
-<h2 id="summary">{{bi "Summary" "요약"}}</h2>
-<div class="cards">
-  {{/* The Packages/Modules title line stays bare for compactness; the Korean line mirrors it at the card foot. */}}
-  <div class="card"><div class="k">{{if .IsGo}}Packages{{else}}Modules{{end}}</div><div class="v">{{len .Packages}}</div><div class="s">{{if .Delta}}{{change .Delta.Packages}} vs v{{.Delta.PrevVersion}}{{else}}{{.Exported}} exported funcs{{end}}</div>{{if .IsGo}}{{bi "" "패키지"}}{{else}}{{bi "" "모듈"}}{{end}}</div>
-  <div class="card"><div class="k">{{bi "Lines" "라인 수"}}</div><div class="v">{{.Lines}}</div><div class="s">{{if .Delta}}{{change .Delta.Lines}} vs v{{.Delta.PrevVersion}}{{else}}non-test {{.LanguageName}} lines{{end}}</div></div>
-  {{- if .Functions}}
-  <div class="card"><div class="k">{{bi "Functions" "함수"}}</div><div class="v">{{.Functions}}</div><div class="s">{{if .Delta}}{{change .Delta.Functions}} vs v{{.Delta.PrevVersion}}{{else}}{{if .IsGo}}functions and methods{{else}}top-level functions{{end}}{{end}}</div></div>
-  {{/* The Static call edges and Dynamic calls title lines stay bare for compactness; the Korean line mirrors them at the card foot. */}}
-  <div class="card"><div class="k">Static call edges</div><div class="v">{{.CallEdges}}</div><div class="s">{{if .Delta}}{{change .Delta.CallEdges}} vs v{{.Delta.PrevVersion}}{{else}}{{if .IsGo}}inside the module{{else}}inside the repo, direct calls only{{end}}{{end}}</div>{{bi "" "정적 호출 간선"}}</div>
-  {{- if .IsGo}}
-  <div class="card{{if .DynamicCalls}} warn{{end}}"><div class="k">Dynamic calls</div><div class="v">{{.DynamicCalls}}</div><div class="s">{{with .DynamicShare}}{{.}} unresolved{{end}}{{if .Delta}}{{if .DynamicShare}} · {{end}}{{change .Delta.DynamicCalls}} vs v{{.Delta.PrevVersion}}{{end}}</div>{{bi "" "동적 호출"}}</div>
-  {{- end}}
-  {{/* The Risk sites title line stays bare for compactness; the Korean line mirrors it at the card foot. */}}
-  <div class="card"><div class="k">Risk sites</div><div class="v">{{.RisksTotal}}</div><div class="s">{{if .Delta}}{{change .Delta.Risks}} vs v{{.Delta.PrevVersion}}{{else}}{{len .RiskKinds}} kinds{{end}}</div>{{bi "" "위험 지점"}}</div>
-  <div class="card ok"><div class="k">{{bi "Start here" "여기서 시작"}}</div><div class="v">{{.StartHereTotal}}</div><div class="s">{{if .Delta}}{{change .Delta.StartHere}} vs v{{.Delta.PrevVersion}}{{else}}first-port candidates{{end}}</div></div>
+<div class="banner info" id="bottom-line">
+  <strong class="verdict">{{biIn "Bottom line" "결론"}}</strong>
+  {{- range .BottomLine}}
+  <p>{{.}}</p>
   {{- end}}
 </div>
 
@@ -703,14 +704,12 @@ var analysisTemplate = template.Must(template.New("analysis").Funcs(analysisFunc
 {{- end}}
 
 {{- if .Delta}}
-<h2 id="changes">Changes since v{{.Delta.PrevVersion}}</h2>
-{{/* The English heading line stays bare; the Korean line mirrors it underneath. */}}
-{{bi "" (printf "v%d 이후 변경 사항" .Delta.PrevVersion)}}
+<h2 id="changes">{{biIn (printf "Changes since v%d" .Delta.PrevVersion) (printf "v%d 이후 변경 사항" .Delta.PrevVersion)}}</h2>
 {{- if not (or .Delta.AddedPackages .Delta.RemovedPackages .Delta.NewRisks)}}
 <p>{{bi (printf "No %s added or removed and no new risk sites since v%d." .Units .Delta.PrevVersion) (printf "v%d 이후 추가되거나 제거된 %s이(가) 없고 새로운 위험 지점도 없습니다." .Delta.PrevVersion $koUnit)}}</p>
 {{- end}}
 {{- if .Delta.AddedPackages}}
-<h3>{{bi (printf "Added %s (%d)" .Units (len .Delta.AddedPackages)) (printf "추가된 %s (%d)" $koUnit (len .Delta.AddedPackages))}}</h3>
+<h3>{{biIn (printf "Added %s (%d)" .Units (len .Delta.AddedPackages)) (printf "추가된 %s (%d)" $koUnit (len .Delta.AddedPackages))}}</h3>
 <ul class="paths">
   {{- range .Delta.AddedPackages}}
   <li title="{{.}}">{{rel $m .}}</li>
@@ -718,7 +717,7 @@ var analysisTemplate = template.Must(template.New("analysis").Funcs(analysisFunc
 </ul>
 {{- end}}
 {{- if .Delta.RemovedPackages}}
-<h3>{{bi (printf "Removed %s (%d)" .Units (len .Delta.RemovedPackages)) (printf "제거된 %s (%d)" $koUnit (len .Delta.RemovedPackages))}}</h3>
+<h3>{{biIn (printf "Removed %s (%d)" .Units (len .Delta.RemovedPackages)) (printf "제거된 %s (%d)" $koUnit (len .Delta.RemovedPackages))}}</h3>
 <ul class="paths">
   {{- range .Delta.RemovedPackages}}
   <li title="{{.}}">{{rel $m .}}</li>
@@ -726,7 +725,7 @@ var analysisTemplate = template.Must(template.New("analysis").Funcs(analysisFunc
 </ul>
 {{- end}}
 {{- if .Delta.NewRisks}}
-<h3>{{bi (printf "New risk sites (%d)" (len .Delta.NewRisks)) (printf "새로운 위험 지점 (%d)" (len .Delta.NewRisks))}}</h3>
+<h3>{{biIn (printf "New risk sites (%d)" (len .Delta.NewRisks)) (printf "새로운 위험 지점 (%d)" (len .Delta.NewRisks))}}</h3>
 <p class="note">A site counts as new when its kind and file:line were not in v{{.Delta.PrevVersion}}, so a site that only moved lines shows here too. Showing {{len .NewRisksShown}} of {{len .Delta.NewRisks}}.</p>
 <table>
   <tr><th>{{bi "Kind" "종류"}}</th><th>{{bi "Where" "위치"}}</th><th>{{if .IsGo}}{{bi "Package" "패키지"}}{{else}}{{bi "Module" "모듈"}}{{end}}</th><th>{{bi "Detail" "상세"}}</th></tr>
@@ -741,8 +740,7 @@ var analysisTemplate = template.Must(template.New("analysis").Funcs(analysisFunc
 </table>
 {{- end}}
 {{- else}}
-<h2 id="changes">Changes</h2>
-{{bi "" "변경 사항"}}
+<h2 id="changes">{{biIn "Changes" "변경 사항"}}</h2>
 {{- if le .Version 1}}
 <p class="note">This is the first analysis of this {{if .IsGo}}module{{else}}project{{end}}, so there is nothing to compare with yet. The next run will show what changed.</p>
 {{- else}}
@@ -751,7 +749,7 @@ var analysisTemplate = template.Must(template.New("analysis").Funcs(analysisFunc
 {{- end}}
 
 {{- if .StartHere}}
-<h2 id="start-here">{{bi "Start here: best first ports" "여기서 시작: 가장 좋은 첫 포팅"}}</h2>
+<h2 id="start-here">{{biIn "Start here: best first ports" "여기서 시작: 가장 좋은 첫 포팅"}}</h2>
 {{- if .IsGo}}
 <p class="note">Exported functions outside package main with a plain signature, no dynamic calls,
 no goroutines, no cgo, and no calls into other module packages. Most called first.

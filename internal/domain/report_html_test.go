@@ -255,3 +255,13 @@ func must(b []byte, err error) []byte {
 	}
 	return b
 }
+
+func TestVerificationViewport(t *testing.T) {
+	r, err := passingReport().HTML()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(r), `name="viewport"`) {
+		t.Fatal("the verification report must carry the viewport meta for narrow screens")
+	}
+}

@@ -26,7 +26,11 @@ func TestClipForReportCutsOnARuneBoundaryAndSaysHowMuchIsHidden(t *testing.T) {
 
 // koreanFor returns the Korean half of the Bi pair whose English half is exactly en, or "".
 func koreanFor(s, en string) string {
+	// Accepts both layouts: the block pair (Korean under) and the inline pair (Korean after).
 	prefix := `<span class="bi-en">` + en + `</span><span class="bi-ko" lang="ko">`
+	if i := strings.Index(s, prefix); i < 0 {
+		prefix = `<span class="bi-en">` + en + `</span><span class="bi-ko-inl" lang="ko">`
+	}
 	i := strings.Index(s, prefix)
 	if i < 0 {
 		return ""
@@ -152,22 +156,21 @@ func TestAnalysisReportCardsAndHeadingsAreBilingual(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := string(b)
+	// Card titles are the compact inline pair: one line, English first, Korean after.
 	tests := []struct{ name, en, ko string }{
 		{"card title", "Lines", "라인 수"},
 		{"start here card", "Start here", "여기서 시작"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if !strings.Contains(s, tc.en) {
-				t.Fatalf("English card title missing: %q", tc.en)
-			}
-			if got := koreanFor(s, tc.en); got != tc.ko {
-				t.Fatalf("card title %q Korean = %q, want %q", tc.en, got, tc.ko)
+			want := `<span class="bi-en">` + tc.en + `</span><span class="bi-ko-inl" lang="ko">` + tc.ko + `</span>`
+			if !strings.Contains(s, want) {
+				t.Fatalf("card title must be one inline bilingual pair %q", want)
 			}
 		})
 	}
-	// The Changes since vN heading keeps its bare English line; the Korean mirror sits under it.
-	if !strings.Contains(s, "<h2 id=\"changes\">Changes since v1</h2>") || !strings.Contains(s, "v1 이후 변경 사항") {
+	// The Changes since vN heading is one line: English first, the Korean pair inline after it.
+	if !strings.Contains(s, `bi-en">Changes since v1</span><span class="bi-ko-inl" lang="ko">v1 이후 변경 사항</span>`) {
 		t.Fatal("the Changes since vN heading must show English and its Korean mirror")
 	}
 	// A risk-kind explanation carries both languages.
@@ -215,4 +218,19 @@ func TestBilingualEvidenceLines(t *testing.T) {
 	t.Logf("verification footer KO line: %s", koreanFor(v, footerEn))
 	t.Logf("analysis card EN line: %s", "Lines")
 	t.Logf("analysis card KO line: %s", koreanFor(a, "Lines"))
+}
+
+// TestReportCSSIsResponsive pins the mobile treatment: a narrow-viewport media query that stacks the
+// layout and lets wide tables scroll instead of stretching the page, and wrapping for long code
+// strings. Without these, a phone renders the reports at desktop width.
+func TestReportCSSIsResponsive(t *testing.T) {
+	for _, want := range []string{
+		`@media (max-width: 720px)`,
+		`table { display: block; overflow-x: auto;`,
+		`overflow-wrap: anywhere;`,
+	} {
+		if !strings.Contains(ReportCSS, want) {
+			t.Fatalf("ReportCSS must keep %q for narrow screens", want)
+		}
+	}
 }

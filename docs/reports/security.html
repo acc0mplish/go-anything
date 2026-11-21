@@ -71,6 +71,12 @@
   footer { color: var(--sc-dim); font-size: .8rem; margin-top: 2.5rem; border-top: 1px solid var(--sc-line);
            padding-top: .5rem; }
   footer p { margin: .25rem 0; }
+  @media (max-width: 720px) {
+    body { margin: 1rem auto; padding: 0 .75rem; font-size: .95rem; }
+    .sc-cards { grid-template-columns: repeat(2, 1fr); gap: .5rem; }
+    table.sc-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    th, td { font-size: .82rem; padding: .3rem .45rem; }
+  }
   @media print { body { margin: 0 auto; } }
 </style>
 </head>
@@ -97,7 +103,7 @@
 <div class="sc-card"><div class="sc-k">모듈 경로 <span class="sc-ken">module path</span></div><div class="sc-v sc-val">github.com/go-anything/go-anything</div></div>
 <div class="sc-card"><div class="sc-k">Go 버전 <span class="sc-ken">Go version</span></div><div class="sc-v sc-val">1.27.4</div></div>
 <div class="sc-card"><div class="sc-k">도구 버전 <span class="sc-ken">tool version</span></div><div class="sc-v sc-val">0.38.0</div></div>
-<div class="sc-card"><div class="sc-k">생성 시각 <span class="sc-ken">generated</span></div><div class="sc-v sc-val">2026-11-21T18:45:50Z</div></div>
+<div class="sc-card"><div class="sc-k">생성 시각 <span class="sc-ken">generated</span></div><div class="sc-v sc-val">2026-11-21T18:57:42Z</div></div>
 </div>
 <h2>체크리스트 결과<span class="sc-en-block">Checklist results</span></h2>
 <table class="sc-table">

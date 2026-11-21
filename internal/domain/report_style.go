@@ -13,8 +13,9 @@ const ReportCSS = `
   h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid var(--line); padding-bottom: .25rem; }
   .meta { color: var(--muted); font-size: .85rem; margin: 0 0 1rem; }
   .meta code { font-size: .8rem; }
-  nav.toc { font-size: .85rem; margin: .5rem 0 1rem; }
-  nav.toc a { margin-right: .9rem; color: var(--info); text-decoration: none; }
+  nav.toc { display: flex; flex-wrap: wrap; gap: .4rem; font-size: .85rem; margin: .5rem 0 1rem; }
+  nav.toc a { padding: .25rem .6rem; border: 1px solid #d1d5db; border-radius: 999px; color: var(--info); text-decoration: none; background: #fff; }
+  nav.toc a:hover { border-color: var(--info); }
   .banner { border-radius: 8px; padding: .8rem 1rem; margin: .75rem 0 1rem; border: 1px solid var(--line); }
   .banner.pass { background: var(--okbg); border-color: var(--ok); }
   .banner.fail { background: var(--badbg); border-color: var(--bad); }
@@ -49,9 +50,24 @@ const ReportCSS = `
      underneath, muted, and never replaces it. */
   .bi-en { display: inline; }
   .bi-ko { display: block; color: var(--muted); font-size: .85em; line-height: 1.3; margin-top: .1rem; }
+  .bi-ko-inl { display: inline; color: var(--muted); font-size: .85em; margin-left: .35em; }
   ol.actions li { margin: .25rem 0; }
   details { margin: .5rem 0 1rem; } details > summary { cursor: pointer; color: var(--info); }
   footer { color: #6e7781; font-size: .8rem; margin-top: 2.5rem; border-top: 1px solid var(--line); padding-top: .5rem; }
+  code, .path, td.path, .mono { overflow-wrap: anywhere; }
+  pre.val { overflow-x: auto; }
+  @media (max-width: 720px) {
+    body { margin: 1rem auto; padding: 0 .75rem; font-size: .95rem; }
+    h1 { font-size: 1.2rem; }
+    h2 { font-size: 1.05rem; margin-top: 1.5rem; }
+    .cards { grid-template-columns: repeat(2, 1fr); gap: .5rem; }
+    .card .v { font-size: 1.1rem; }
+    table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    th, td { font-size: .82rem; padding: .3rem .45rem; }
+    nav.toc { gap: .3rem; font-size: .8rem; }
+    nav.toc a { padding: .2rem .5rem; }
+    .banner { padding: .6rem .7rem; }
+  }
   @media print { details { display: block; } details > summary { display: none; } nav.toc { display: none; } }
 `
 
@@ -67,6 +83,12 @@ const ReportValueLimit = 2048
 // Both halves are escaped, so even a caller that mistakenly wraps data cannot inject markup.
 // The result is a plain string so Go-side callers and tests can match the English inside it;
 // templates insert it through biHTML, which marks it safe for html/template.
+// BiInline is the compact pair for one-line contexts: tabs, card labels, table headers. The
+// Korean follows on the same line, smaller and muted, so a bilingual label is one item, not two.
+func BiInline(en, ko string) string {
+	return `<span class="bi-en">` + template.HTMLEscapeString(en) + `</span><span class="bi-ko-inl" lang="ko">` + template.HTMLEscapeString(ko) + `</span>`
+}
+
 func Bi(en, ko string) string {
 	return `<span class="bi-en">` + template.HTMLEscapeString(en) + `</span><span class="bi-ko" lang="ko">` + template.HTMLEscapeString(ko) + `</span>`
 }
@@ -74,3 +96,5 @@ func Bi(en, ko string) string {
 // biHTML is Bi as an html/template function, so templates can mark fixed prose bilingual without
 // the default contextual escaping showing the spans as text.
 func biHTML(en, ko string) template.HTML { return template.HTML(Bi(en, ko)) }
+
+func biInlineHTML(en, ko string) template.HTML { return template.HTML(BiInline(en, ko)) }

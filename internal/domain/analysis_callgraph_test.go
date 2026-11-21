@@ -138,7 +138,8 @@ func TestAnalysisHTMLShowsCallGraphSections(t *testing.T) {
 	s := string(b)
 	for _, want := range []string{
 		"Start here: best first ports", "m/lib.Leaf", "lib/a.go:3",
-		`Static call edges</div><div class="v">7<`, `Dynamic calls</div><div class="v">2<`,
+		`bi-en">Static call edges</span><span class="bi-ko-inl" lang="ko">정적 호출 간선</span></div><div class="v">7<`,
+		`bi-en">Dynamic calls</span><span class="bi-ko-inl" lang="ko">동적 호출</span></div><div class="v">2<`,
 		"cannot be resolved that way", "Risks by location", "cmd/main.go:3",
 		"Packages that did not type-check", "other/x.go:2: boom", "m/lib.Wide",
 	} {

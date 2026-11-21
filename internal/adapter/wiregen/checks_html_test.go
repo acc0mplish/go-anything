@@ -326,3 +326,13 @@ func TestRefineWritesThePage(t *testing.T) {
 		t.Fatalf("the page must show the convergence of the run:\n%s", page)
 	}
 }
+
+func TestRefineHTMLViewport(t *testing.T) {
+	data, err := RenderRefineHTML(RefineReport{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `name="viewport"`) {
+		t.Fatal("the refine page must carry the viewport meta for narrow screens")
+	}
+}

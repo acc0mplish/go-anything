@@ -156,6 +156,12 @@ const secureCSS = `
   footer { color: var(--sc-dim); font-size: .8rem; margin-top: 2.5rem; border-top: 1px solid var(--sc-line);
            padding-top: .5rem; }
   footer p { margin: .25rem 0; }
+  @media (max-width: 720px) {
+    body { margin: 1rem auto; padding: 0 .75rem; font-size: .95rem; }
+    .sc-cards { grid-template-columns: repeat(2, 1fr); gap: .5rem; }
+    table.sc-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    th, td { font-size: .82rem; padding: .3rem .45rem; }
+  }
   @media print { body { margin: 0 auto; } }
 `
 

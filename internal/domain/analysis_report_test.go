@@ -204,11 +204,14 @@ func TestAnalysisHTMLBottomLineNamesWaveZeroAndStartHere(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := string(b)
-	banner := s[strings.Index(s, `id="bottom-line"`):strings.Index(s, `id="summary"`)]
+	banner := s[strings.Index(s, `id="bottom-line"`):strings.Index(s, `id="changes"`)]
 	for _, want := range []string{"ready (readiness &gt;= 90): core.", "First functions: core.Parse and core.Join", "app (55: unsafe or cgo, no tests of its own)"} {
 		if !strings.Contains(banner, want) {
 			t.Fatalf("bottom line missing %q:\n%s", want, banner)
 		}
+	}
+	if strings.Index(s, `id="summary"`) > strings.Index(s, `id="bottom-line"`) {
+		t.Fatal("the KPI summary must come before the bottom line")
 	}
 	if strings.Index(s, `id="bottom-line"`) > strings.Index(s, `id="start-here"`) {
 		t.Fatal("bottom line must come before the tables")
@@ -239,9 +242,9 @@ func TestAnalysisHTMLShowsChangesSincePrevious(t *testing.T) {
 	}
 	s := string(b)
 	for _, want := range []string{
-		`<h2 id="changes">Changes since v2</h2>`, "Removed packages (1)", `title="example.com/m/gone">gone<`,
-		"New risk sites (1)", "small/a.go:4", `<div class="k">Packages</div><div class="v">2</div><div class="s">-1 vs v2</div>`,
-		`<div class="k">Risk sites</div><div class="v">1</div><div class="s">&#43;1 vs v2</div>`, // html/template escapes "+"
+		`<h2 id="changes"><span class="bi-en">Changes since v2</span>`, "Removed packages (1)", `title="example.com/m/gone">gone<`,
+		"New risk sites (1)", "small/a.go:4", `<div class="k"><span class="bi-en">Packages</span><span class="bi-ko-inl" lang="ko">패키지</span></div><div class="v">2</div><div class="s">-1 vs v2</div>`,
+		`<div class="k"><span class="bi-en">Risk sites</span><span class="bi-ko-inl" lang="ko">위험 지점</span></div><div class="v">1</div><div class="s">&#43;1 vs v2</div>`, // html/template escapes "+"
 		"Since v2: 1 package removed, lines -7, 1 new risk site.",
 	} {
 		if !strings.Contains(s, want) {
@@ -352,5 +355,15 @@ func TestReadinessWeightsMatchPlan(t *testing.T) {
 func TestCardChangeReadsNoChangeForZero(t *testing.T) {
 	if Change(0) != "no change" || Change(3) != "+3" || Change(-2) != "-2" {
 		t.Fatalf("Change: got %q %q %q", Change(0), Change(3), Change(-2))
+	}
+}
+
+func TestAnalysisReportViewport(t *testing.T) {
+	b, err := NewAnalysisReport(sampleAnalysis(), 1).HTML()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), `name="viewport"`) {
+		t.Fatal("the analysis report must carry the viewport meta for narrow screens")
 	}
 }

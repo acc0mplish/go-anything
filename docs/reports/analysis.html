@@ -13,8 +13,9 @@
   h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid var(--line); padding-bottom: .25rem; }
   .meta { color: var(--muted); font-size: .85rem; margin: 0 0 1rem; }
   .meta code { font-size: .8rem; }
-  nav.toc { font-size: .85rem; margin: .5rem 0 1rem; }
-  nav.toc a { margin-right: .9rem; color: var(--info); text-decoration: none; }
+  nav.toc { display: flex; flex-wrap: wrap; gap: .4rem; font-size: .85rem; margin: .5rem 0 1rem; }
+  nav.toc a { padding: .25rem .6rem; border: 1px solid #d1d5db; border-radius: 999px; color: var(--info); text-decoration: none; background: #fff; }
+  nav.toc a:hover { border-color: var(--info); }
   .banner { border-radius: 8px; padding: .8rem 1rem; margin: .75rem 0 1rem; border: 1px solid var(--line); }
   .banner.pass { background: var(--okbg); border-color: var(--ok); }
   .banner.fail { background: var(--badbg); border-color: var(--bad); }
@@ -48,9 +49,24 @@
    
   .bi-en { display: inline; }
   .bi-ko { display: block; color: var(--muted); font-size: .85em; line-height: 1.3; margin-top: .1rem; }
+  .bi-ko-inl { display: inline; color: var(--muted); font-size: .85em; margin-left: .35em; }
   ol.actions li { margin: .25rem 0; }
   details { margin: .5rem 0 1rem; } details > summary { cursor: pointer; color: var(--info); }
   footer { color: #6e7781; font-size: .8rem; margin-top: 2.5rem; border-top: 1px solid var(--line); padding-top: .5rem; }
+  code, .path, td.path, .mono { overflow-wrap: anywhere; }
+  pre.val { overflow-x: auto; }
+  @media (max-width: 720px) {
+    body { margin: 1rem auto; padding: 0 .75rem; font-size: .95rem; }
+    h1 { font-size: 1.2rem; }
+    h2 { font-size: 1.05rem; margin-top: 1.5rem; }
+    .cards { grid-template-columns: repeat(2, 1fr); gap: .5rem; }
+    .card .v { font-size: 1.1rem; }
+    table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    th, td { font-size: .82rem; padding: .3rem .45rem; }
+    nav.toc { gap: .3rem; font-size: .8rem; }
+    nav.toc a { padding: .2rem .5rem; }
+    .banner { padding: .6rem .7rem; }
+  }
   @media print { details { display: block; } details > summary { display: none; } nav.toc { display: none; } }
 
   td.path, td.val { word-break: normal; overflow-wrap: anywhere; }
@@ -67,45 +83,44 @@
 </head>
 <body>
 <h1>Analysis v1: github.com/go-anything/go-anything</h1>
-<p class="meta">Root <code>/mnt/e/DEV/go-anything</code> · version 1 · generated 2026-11-21T18:45:49Z · paths below are relative to the module; hover for the full path</p>
+<p class="meta">Root <code>/mnt/e/DEV/go-anything</code> · version 1 · generated 2026-11-21T18:57:41Z · paths below are relative to the module; hover for the full path</p>
 <nav class="toc">
-  <a href="#bottom-line"><span class="bi-en">Bottom line</span><span class="bi-ko" lang="ko">결론</span></a>
-  <a href="#summary"><span class="bi-en">Summary</span><span class="bi-ko" lang="ko">요약</span></a>
-  <a href="#changes"><span class="bi-en">Changes</span><span class="bi-ko" lang="ko">변경 사항</span></a>
-  <a href="#start-here"><span class="bi-en">Start here</span><span class="bi-ko" lang="ko">여기서 시작</span></a>
-  <a href="#order"><span class="bi-en">Porting order</span><span class="bi-ko" lang="ko">포팅 순서</span></a>
-  <a href="#risks"><span class="bi-en">Risks</span><span class="bi-ko" lang="ko">위험</span></a>
-  <a href="#packages"><span class="bi-en">Packages</span><span class="bi-ko" lang="ko">패키지</span></a>
-  <a href="#how"><span class="bi-en">How to read this</span><span class="bi-ko" lang="ko">읽는 법</span></a>
+  <a href="#summary"><span class="bi-en">Summary</span><span class="bi-ko-inl" lang="ko">요약</span></a>
+  <a href="#bottom-line"><span class="bi-en">Bottom line</span><span class="bi-ko-inl" lang="ko">결론</span></a>
+  <a href="#changes"><span class="bi-en">Changes</span><span class="bi-ko-inl" lang="ko">변경 사항</span></a>
+  <a href="#start-here"><span class="bi-en">Start here</span><span class="bi-ko-inl" lang="ko">여기서 시작</span></a>
+  <a href="#order"><span class="bi-en">Porting 순서</span><span class="bi-ko-inl" lang="ko">포팅 순서</span></a>
+  <a href="#risks"><span class="bi-en">Risks</span><span class="bi-ko-inl" lang="ko">위험</span></a>
+  <a href="#packages"><span class="bi-en">Packages</span><span class="bi-ko-inl" lang="ko">패키지</span></a>
+  <a href="#how"><span class="bi-en">How to read this</span><span class="bi-ko-inl" lang="ko">읽는 법</span></a>
 </nav>
 
+<h2 id="summary"><span class="bi-en">Summary</span><span class="bi-ko-inl" lang="ko">요약</span></h2>
+<div class="cards">
+  
+  <div class="card"><div class="k"><span class="bi-en">Packages</span><span class="bi-ko-inl" lang="ko">패키지</span></div><div class="v">25</div><div class="s">265 exported funcs</div></div>
+  <div class="card"><div class="k"><span class="bi-en">Lines</span><span class="bi-ko-inl" lang="ko">라인 수</span></div><div class="v">24732</div><div class="s">non-test Go lines</div></div>
+  <div class="card"><div class="k"><span class="bi-en">Functions</span><span class="bi-ko-inl" lang="ko">함수</span></div><div class="v">741</div><div class="s">functions and methods</div></div>
+  
+  <div class="card"><div class="k"><span class="bi-en">Static call edges</span><span class="bi-ko-inl" lang="ko">정적 호출 간선</span></div><div class="v">1063</div><div class="s">inside the module</div>
+  <div class="card warn"><div class="k"><span class="bi-en">Dynamic calls</span><span class="bi-ko-inl" lang="ko">동적 호출</span></div><div class="v">405</div><div class="s">28% unresolved</div>
+  
+  <div class="card"><div class="k"><span class="bi-en">Risk sites</span><span class="bi-ko-inl" lang="ko">위험 지점</span></div><div class="v">8</div><div class="s">2 kinds</div>
+  <div class="card ok"><div class="k"><span class="bi-en">Start here</span><span class="bi-ko-inl" lang="ko">여기서 시작</span></div><div class="v">168</div><div class="s">first-port candidates</div></div>
+</div>
+
 <div class="banner info" id="bottom-line">
-  <strong class="verdict"><span class="bi-en">Bottom line</span><span class="bi-ko" lang="ko">결론</span></strong>
+  <strong class="verdict"><span class="bi-en">Bottom line</span><span class="bi-ko-inl" lang="ko">결론</span></strong>
   <p>Start with wave 0: 6 of its 7 packages are ready (readiness &gt;= 90): internal/adapter/mcp, internal/adapter/setup, internal/adapter/profile, internal/adapter/shadowgen and 2 more.</p>
   <p>First functions: internal/domain.FuncID, internal/domain.ClipForReport and internal/domain.Normalize (leaf functions with plain signatures, most called first).</p>
   <p>No package scores below 60; port the lowest with care: internal/adapter/doctor (70: external side effects, no tests of its own), internal/adapter/layout (80: external side effects, goroutines) and 7 more.</p>
 </div>
-
-<h2 id="summary"><span class="bi-en">Summary</span><span class="bi-ko" lang="ko">요약</span></h2>
-<div class="cards">
-  
-  <div class="card"><div class="k">Packages</div><div class="v">25</div><div class="s">264 exported funcs</div><span class="bi-en"></span><span class="bi-ko" lang="ko">패키지</span></div>
-  <div class="card"><div class="k"><span class="bi-en">Lines</span><span class="bi-ko" lang="ko">라인 수</span></div><div class="v">24704</div><div class="s">non-test Go lines</div></div>
-  <div class="card"><div class="k"><span class="bi-en">Functions</span><span class="bi-ko" lang="ko">함수</span></div><div class="v">739</div><div class="s">functions and methods</div></div>
-  
-  <div class="card"><div class="k">Static call edges</div><div class="v">1062</div><div class="s">inside the module</div><span class="bi-en"></span><span class="bi-ko" lang="ko">정적 호출 간선</span></div>
-  <div class="card warn"><div class="k">Dynamic calls</div><div class="v">405</div><div class="s">28% unresolved</div><span class="bi-en"></span><span class="bi-ko" lang="ko">동적 호출</span></div>
-  
-  <div class="card"><div class="k">Risk sites</div><div class="v">8</div><div class="s">2 kinds</div><span class="bi-en"></span><span class="bi-ko" lang="ko">위험 지점</span></div>
-  <div class="card ok"><div class="k"><span class="bi-en">Start here</span><span class="bi-ko" lang="ko">여기서 시작</span></div><div class="v">167</div><div class="s">first-port candidates</div></div>
-</div>
-<h2 id="changes">Changes</h2>
-<span class="bi-en"></span><span class="bi-ko" lang="ko">변경 사항</span>
+<h2 id="changes"><span class="bi-en">Changes</span><span class="bi-ko-inl" lang="ko">변경 사항</span></h2>
 <p class="note">This is the first analysis of this module, so there is nothing to compare with yet. The next run will show what changed.</p>
-<h2 id="start-here"><span class="bi-en">Start here: best first ports</span><span class="bi-ko" lang="ko">여기서 시작: 가장 좋은 첫 포팅</span></h2>
+<h2 id="start-here"><span class="bi-en">Start here: best first ports</span><span class="bi-ko-inl" lang="ko">여기서 시작: 가장 좋은 첫 포팅</span></h2>
 <p class="note">Exported functions outside package main with a plain signature, no dynamic calls,
 no goroutines, no cgo, and no calls into other module packages. Most called first.
-Showing 10 of 167.</p>
+Showing 10 of 168.</p>
 <table>
   <tr><th><span class="bi-en">Function</span><span class="bi-ko" lang="ko">함수</span></th><th><span class="bi-en">Where</span><span class="bi-ko" lang="ko">위치</span></th><th class="num"><span class="bi-en">Callers</span><span class="bi-ko" lang="ko">호출자</span></th><th><span class="bi-en">Signature</span><span class="bi-ko" lang="ko">시그니처</span></th></tr>
   <tr>
@@ -215,7 +230,7 @@ Showing 10 of 167.</p>
     <td class="num">6</td>
     <td class="num bar-cell">90<span class="bar"><span style="width: 90%"></span></span></td>
     <td class="path" title="github.com/go-anything/go-anything/internal/domain">internal/domain</td>
-    <td class="num">4721</td>
+    <td class="num">4749</td>
     <td><div>wide API: more than 20 exported functions</div></td>
   </tr>
   <tr>
@@ -431,9 +446,9 @@ Showing 10 of 167.</p>
   <tr>
     <td class="path nowrap" title="github.com/go-anything/go-anything/internal/domain">internal/domain <span class="badge info">internal</span></td>
     <td class="num">28</td>
-    <td class="num">4721</td>
-    <td class="num">79</td>
-    <td class="num">142</td>
+    <td class="num">4749</td>
+    <td class="num">80</td>
+    <td class="num">144</td>
   </tr>
   <tr>
     <td class="path nowrap" title="github.com/go-anything/go-anything/internal/adapter/analyze">internal/adapter/analyze <span class="badge info">internal</span></td>

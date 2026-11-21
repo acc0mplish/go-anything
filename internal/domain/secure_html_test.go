@@ -262,3 +262,9 @@ func TestSecureReportHTMLBilingualPairs(t *testing.T) {
 		}
 	}
 }
+
+func TestSecureHTMLViewport(t *testing.T) {
+	if !strings.Contains(SecureReportHTML(secureTestReport(nil)), `name="viewport"`) {
+		t.Fatal("the security report must carry the viewport meta for narrow screens")
+	}
+}
