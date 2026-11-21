@@ -141,7 +141,7 @@ allow/deny/other 결과로만 하며, 죽는 서버가 통과인 척하는 것�
 go install github.com/go-anything/go-anything/cmd/go-anything@latest
 ```
 
-또는 체크아웃 빌드. 릴리스 바이너리는 `go-anything package`가 linux/darwin/windows 전 타깃을 만듭니다(`docs/INSTALL.md`).
+또는 체크아웃 빌드. 릴리스 바이너리는 `go-anything package`가 linux/darwin/windows 전 타깃으로 만듭니다. 설치 문서도 같은 명령이 생성합니다.
 
 ## 빠른 시작
 

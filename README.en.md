@@ -22,7 +22,7 @@ Or build from a checkout:
 go build -o go-anything ./cmd/go-anything
 ```
 
-Release binaries for linux, darwin and windows come from `go-anything package` (see `docs/INSTALL.md`).
+Release binaries for linux, darwin and windows come from `go-anything package`, which also generates the installation document.
 
 ## The three flows
 
