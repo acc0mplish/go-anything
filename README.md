@@ -110,6 +110,10 @@ go test -race -count=1 ./...
 
 All three are expected clean. Status and history of the build live in `docs/STATUS.md` (Korean), the design rules in `docs/HARDENING.md` and `docs/DECISIONS.md`, the loop plan in `docs/RSI_PLAN.md`.
 
+## 라이선스
+
+Modified MIT + Commons Clause + 미디어 제한. 전문은 [`LICENSE`](./LICENSE)에 있다. 판매(SaaS·호스팅·화이트라벨 포함)는 금지되고, 저작권자의 사전 서면 동의 없이 이 소프트웨어로 상업적 공개 미디어 콘텐츠를 만들 수 없다. OSI 정의의 오픈소스가 아니라 소스 공개(source-available)이다.
+
 ## 한국어 요약
 
 go-anything은 원본 프로그램의 동작을 기록하고, Go 재작성이 그 동작과 일치하는지 검증하며, 불일치를 에이전트가 고치는 루프를 수렴시킬 때까지 돌리는 마이그레이션 도구입니다.
@@ -122,4 +126,10 @@ go-anything은 원본 프로그램의 동작을 기록하고, Go 재작성이 �
 
 ## License
 
-To be decided by the maintainer before the first public push.
+**Modified MIT + Commons Clause + Media Restrictions** (full text: [`LICENSE`](./LICENSE)). MIT grant plus the following constraints:
+
+1. **Commons Clause** - no Selling the Software (providing it to third parties for a fee or consideration, including SaaS, hosting, white-label and rebrand). This is source-available, not open source under the OSI definition.
+2. **Media Restriction** - without the Copyright Holder's prior written consent, the Software's source code, UI and derivatives may not be used to create public media content (broadcasts, demos, reviews or analysis on YouTube, Twitch, blogs, especially where commercial monetization or self-promotion misrepresents ownership).
+3. Violation terminates all rights immediately, enforced via DMCA Takedown and platform copyright procedures.
+
+Copyright (c) 2026 KLIC Co., Ltd.
