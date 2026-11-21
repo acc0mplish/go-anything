@@ -132,4 +132,4 @@ go-anything은 원본 프로그램의 동작을 기록하고, Go 재작성이 �
 2. **Media Restriction** - without the Copyright Holder's prior written consent, the Software's source code, UI and derivatives may not be used to create public media content (broadcasts, demos, reviews or analysis on YouTube, Twitch, blogs, especially where commercial monetization or self-promotion misrepresents ownership).
 3. Violation terminates all rights immediately, enforced via DMCA Takedown and platform copyright procedures.
 
-Copyright (c) 2026 KLIC Co., Ltd.
+Copyright (c) 2026 acc0mplish
