@@ -1,0 +1,18 @@
+/bin/
+*.test
+*.out
+coverage.out
+
+# go-anything project state: reports, round checks, defect lists
+.go-anything/
+
+# compiled binaries built inside a package directory
+/cmd/go-anything/go-anything
+/go-anything
+/dist/
+
+# per-operator agent tooling (the implementer agent used while building this)
+.claude/
+.codex/
+.gemini/
+.pi/

@@ -1,0 +1,39 @@
+package domain
+
+import "strings"
+
+// probeBoundaries are the values programs most often get wrong for an id-like argument.
+var probeBoundaries = []string{"", "0", "1", "2", "50", "99", "100", "101", "499", "500",
+	"-1", "+5", "007", " 9 ", "1x", "3 extra", "9999999999999999999999", "-0", "1e3", "NaN",
+	"٣", "१२", "²", "³", "½"}
+
+// ProbeValues returns up to n deterministic values to try: the boundary values first, then values
+// generated from seed. Values never hold newlines or NUL, so they can also be command-line arguments.
+func ProbeValues(seed uint64, n int) []string {
+	seen := map[string]bool{}
+	var out []string
+	add := func(v string) {
+		if len(out) < n && !seen[v] && !strings.ContainsAny(v, "\n\r\x00") && len(v) <= 40 {
+			seen[v] = true
+			out = append(out, v)
+		}
+	}
+	for _, v := range probeBoundaries {
+		add(v)
+	}
+	for _, v := range FuzzInputs(seed, n*3) {
+		add(v)
+	}
+	return out
+}
+
+// ProbeBoundary reports whether a value is one of the fixed boundary values, as opposed to one generated
+// from a seed. Check records use it to say how much of a round came from each kind.
+func ProbeBoundary(v string) bool {
+	for _, b := range probeBoundaries {
+		if v == b {
+			return true
+		}
+	}
+	return false
+}
