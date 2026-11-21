@@ -8,6 +8,9 @@ import (
 )
 
 // SkillMD is the workflow skill, embedded in the binary so setup needs no source checkout.
+// It covers all four workflows (CLI verify, the refine loop, the security confirmation checklist,
+// the authorization audit); an agent that only knows record and verify will misreport what
+// go-anything can decide.
 //
 //go:embed skill/SKILL.md
 var SkillMD string
@@ -22,6 +25,8 @@ func skillDir(home, agent string) string {
 		return filepath.Join(home, ".codex", "skills", ServerName)
 	case "opencode":
 		return filepath.Join(home, ".config", "opencode", "skills", ServerName)
+	case "pi":
+		return filepath.Join(home, ".pi", "agent", "skills", ServerName)
 	}
 	return ""
 }

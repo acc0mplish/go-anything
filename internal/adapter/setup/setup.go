@@ -49,6 +49,7 @@ var Agents = []Agent{
 	{Name: "gemini", Path: ".gemini/settings.json", Marker: ".gemini", Format: FormatMCPServers},
 	{Name: "opencode", Path: ".config/opencode/opencode.json", Marker: ".config/opencode", Format: FormatOpenCode},
 	{Name: "codex", Path: ".codex/config.toml", Marker: ".codex", Format: FormatCodexTOML},
+	{Name: "pi", Path: ".pi/agent/mcp.json", Marker: ".pi", Format: FormatMCPServers},
 }
 
 // Change describes what setup would do (or did).

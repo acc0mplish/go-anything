@@ -98,3 +98,48 @@ func TestSkipsAgentsNotInstalled(t *testing.T) {
 		t.Fatalf("no agent dirs means no changes, got %+v", changes)
 	}
 }
+
+// TestPiAgentRegistersSkillAndMCP pins the pi entry: the same mcpServers JSON shape as Claude and
+// Cursor, and a skill folder under .pi/agent/skills.
+func TestPiAgentRegistersSkillAndMCP(t *testing.T) {
+	home := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(home, ".pi", "agent"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	changes, err := Run(Options{Home: home, Command: "/bin/go-anything", Args: []string{"mcp"}, Apply: true, Only: "pi", Skill: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sawConfig, sawSkill bool
+	for _, c := range changes {
+		if c.Agent != "pi" {
+			t.Fatalf("Only=pi must not touch %s", c.Agent)
+		}
+		switch c.Kind {
+		case "config":
+			sawConfig = true
+			data, err := os.ReadFile(filepath.Join(home, ".pi", "agent", "mcp.json"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var cfg map[string]map[string]map[string]any
+			if err := json.Unmarshal(data, &cfg); err != nil {
+				t.Fatalf("pi mcp.json must stay the shared mcpServers shape: %v", err)
+			}
+			if cfg["mcpServers"]["go-anything"]["command"] != "/bin/go-anything" {
+				t.Fatalf("server entry wrong: %v", cfg["mcpServers"]["go-anything"])
+			}
+		case "skill":
+			sawSkill = true
+			if _, err := os.Stat(filepath.Join(home, ".pi", "agent", "skills", "go-anything", "SKILL.md")); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if !sawConfig || !sawSkill {
+		t.Fatalf("pi must get both config and skill, got config=%v skill=%v", sawConfig, sawSkill)
+	}
+	if p := SkillPath(home, "pi"); p == "" {
+		t.Fatal("SkillPath must resolve for pi")
+	}
+}
