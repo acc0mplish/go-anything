@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>보안기능 확인 체크리스트 · Security function confirmation checklist</title>
+<style>
+  :root { --sc-fg:#1d1d1f; --sc-muted:#57606a; --sc-line:#d0d7de; --sc-head:#f6f8fa; --sc-ok:#1a7f37;
+          --sc-bad:#cf222e; --sc-warn:#9a6700; --sc-info:#0969da; --sc-dim:#6e7781; --sc-okbg:#dafbe1;
+          --sc-badbg:#ffebe9; --sc-warnbg:#fff8c5; --sc-infobg:#ddf4ff; --sc-graybg:#eaeef2; }
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 1080px; color: var(--sc-fg);
+         padding: 0 1rem; line-height: 1.45; background: #fff; }
+  h1 { font-size: 1.5rem; margin: 0 0 .25rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid var(--sc-line); padding-bottom: .25rem; }
+  .sc-en-block { display: block; color: var(--sc-muted); font-size: .7em; font-weight: 500; margin-top: .15rem; }
+  .sc-ken { color: var(--sc-muted); font-size: .85em; }
+  .sc-meta { color: var(--sc-muted); font-size: .85rem; margin: 0 0 1rem; }
+  .sc-meta code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem; }
+  .sc-prov { border: 1px solid var(--sc-line); border-left: 4px solid var(--sc-dim); border-radius: 8px;
+             padding: .6rem 1rem; margin: .5rem 0 1rem; }
+  .sc-prov h2 { margin: 0 0 .4rem; border: 0; font-size: 1rem; padding: 0; }
+  .sc-prov-ko { margin: .2rem 0; }
+  .sc-prov-en { margin: .2rem 0; color: var(--sc-muted); font-size: .9em; }
+  .sc-banner { border-radius: 8px; padding: .8rem 1rem; margin: .75rem 0 1rem; border: 1px solid var(--sc-line); }
+  .sc-banner.sc-ok { background: var(--sc-okbg); border-color: var(--sc-ok); }
+  .sc-banner.sc-bad { background: var(--sc-badbg); border-color: var(--sc-bad); }
+  .sc-verdict { margin: 0; }
+  .sc-verdict strong { font-size: 1.15rem; }
+  .sc-note-line { margin: .3rem 0 0; font-size: .88rem; }
+  .sc-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .6rem;
+              margin: .75rem 0 1rem; }
+  .sc-card { border: 1px solid var(--sc-line); border-radius: 8px; padding: .55rem .75rem; min-width: 0; }
+  .sc-card .sc-k { color: var(--sc-muted); font-size: .78rem; }
+  .sc-card .sc-v { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums;
+                   word-break: break-all; }
+  .sc-card .sc-val { font-size: .9rem; font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .sc-card.sc-ok-t .sc-v { color: var(--sc-ok); }
+  .sc-card.sc-bad-t .sc-v { color: var(--sc-bad); }
+  .sc-card.sc-warn-t .sc-v { color: var(--sc-warn); }
+  .sc-card.sc-dim-t .sc-v { color: var(--sc-dim); }
+  .sc-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82rem; word-break: break-all; }
+  table.sc-table { border-collapse: collapse; width: 100%; margin: .5rem 0 1.25rem; }
+  .sc-table th, .sc-table td { border: 1px solid var(--sc-line); padding: .35rem .55rem; text-align: left;
+                               vertical-align: top; }
+  .sc-table th { background: var(--sc-head); font-size: .85rem; white-space: nowrap; }
+  .sc-table .sc-ref {\n\tcolor: #6b7280;\n\tfont-size: 11px;\n}\n.sc-id { white-space: nowrap; }
+  .sc-cat td { background: var(--sc-head); font-weight: 700; }
+  .sc-cat .sc-ken { margin-left: .35rem; font-weight: 400; }
+  .sc-req-ko { font-weight: 600; }
+  .sc-req-en { color: var(--sc-muted); font-size: .85em; margin-top: .15rem; }
+  .sc-guide-ko { margin-top: .35rem; font-size: .88rem; }
+  .sc-guide-ko .sc-k { color: var(--sc-muted); }
+  .sc-guide-en { color: var(--sc-muted); font-size: .82em; margin-top: .1rem; }
+  .sc-badge { display: inline-block; font-size: .72rem; padding: .05rem .45rem; border-radius: 999px;
+              border: 1px solid var(--sc-line); white-space: nowrap; }
+  .sc-badge .sc-ken { margin-left: .25rem; }
+  .sc-badge.sc-pass { background: var(--sc-okbg); color: var(--sc-ok); border-color: var(--sc-ok); }
+  .sc-badge.sc-fail { background: var(--sc-badbg); color: var(--sc-bad); border-color: var(--sc-bad); }
+  .sc-badge.sc-manual { background: var(--sc-warnbg); color: var(--sc-warn); border-color: var(--sc-warn); }
+  .sc-badge.sc-skip { background: var(--sc-graybg); color: var(--sc-muted); border-color: var(--sc-muted); }
+  .sc-badge.sc-plain { background: var(--sc-head); color: var(--sc-muted); }
+  .sc-badge.sc-mand { background: var(--sc-badbg); color: var(--sc-bad); border-color: var(--sc-bad); }
+  .sc-badge.sc-rec { background: var(--sc-infobg); color: var(--sc-info); border-color: var(--sc-info); }
+  .sc-fpos { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem;
+             word-break: break-all; }
+  .sc-fdet { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem;
+             word-break: break-all; color: var(--sc-muted); margin-bottom: .25rem; }
+  .sc-ev .sc-k { color: var(--sc-muted); font-size: .78rem; }
+  .sc-row-bad td { background: #fff7f6; }
+  footer { color: var(--sc-dim); font-size: .8rem; margin-top: 2.5rem; border-top: 1px solid var(--sc-line);
+           padding-top: .5rem; }
+  footer p { margin: .25rem 0; }
+  @media print { body { margin: 0 auto; } }
+</style>
+</head>
+<body>
+<h1>보안기능 확인 체크리스트<span class="sc-en-block">Security function confirmation checklist</span></h1>
+<p class="sc-meta">대상 경로 <span class="sc-ken">root</span>: <code>/mnt/e/DEV/go-anything</code></p>
+<section class="sc-prov">
+<h2>출처 및 범위<span class="sc-en-block">Provenance and scope</span></h2>
+<p class="sc-prov-ko">이 체크리스트는 국가정보원 「정보보호시스템 및 네트워크 장비 국가용 보안요구사항」(1·2편 해설 및 공통보안요구사항, 2023.8.21.)의 서버 공통보안요구사항 V3.0 R1 소분류를 Go 모듈 검사 항목으로 옮긴 운영 목록이다. 각 항목의 ref 열이 공식 조항 번호를 가리킨다. 공식 원문을 대체하지 않으며, manual 항목은 공식 문서와 대비하여 사람이 확인해야 한다. 3편 제품 보안요구사항(침입차단 제품군 등)은 이식 대상이 그런 제품일 때 추가로 적용되며 이 목록의 범위 밖이다.</p>
+<p class="sc-prov-en">This checklist maps the server common security requirements V3.0 R1 of the Korean NIS national security requirements for information protection systems and network equipment (parts 1-2, 2023-08-21) onto checkable items for a Go module; each item&#39;s ref column points at the official clause. It does not replace the official text; manual items must be verified by a person against that text. Part 3 product-group requirements (intrusion prevention products and the like) apply additionally when the migrated system is such a product and are out of scope here.</p>
+</section>
+<div class="sc-banner sc-bad">
+<p class="sc-verdict"><strong>필수 항목 미충족</strong><span class="sc-en-block">Mandatory items failed</span></p>
+<p class="sc-note-line">건너뜀(skip)과 사람 확인(manual) 결과는 이 배너를 빨간색으로 만들지 않는다.</p>
+<p class="sc-note-line">Skip and manual results never turn this banner red.</p>
+</div>
+<h2>요약<span class="sc-en-block">Summary</span></h2>
+<div class="sc-cards">
+<div class="sc-card sc-ok-t"><div class="sc-k">통과 <span class="sc-ken">pass</span></div><div class="sc-v">8</div></div>
+<div class="sc-card sc-bad-t"><div class="sc-k">미충족 <span class="sc-ken">fail</span></div><div class="sc-v">6</div></div>
+<div class="sc-card sc-warn-t"><div class="sc-k">사람 확인 <span class="sc-ken">manual</span></div><div class="sc-v">24</div></div>
+<div class="sc-card sc-dim-t"><div class="sc-k">건너뜀 <span class="sc-ken">skip</span></div><div class="sc-v">1</div></div>
+<div class="sc-card"><div class="sc-k">스캔 파일 <span class="sc-ken">scanned files</span></div><div class="sc-v">121</div></div>
+<div class="sc-card"><div class="sc-k">모듈 경로 <span class="sc-ken">module path</span></div><div class="sc-v sc-val">github.com/go-anything/go-anything</div></div>
+<div class="sc-card"><div class="sc-k">Go 버전 <span class="sc-ken">Go version</span></div><div class="sc-v sc-val">1.27.4</div></div>
+<div class="sc-card"><div class="sc-k">도구 버전 <span class="sc-ken">tool version</span></div><div class="sc-v sc-val">0.38.0</div></div>
+<div class="sc-card"><div class="sc-k">생성 시각 <span class="sc-ken">generated</span></div><div class="sc-v sc-val">2026-11-21T18:45:50Z</div></div>
+</div>
+<h2>체크리스트 결과<span class="sc-en-block">Checklist results</span></h2>
+<table class="sc-table">
+<thead><tr>
+<th>ID</th>
+<th>확인 사항 <span class="sc-ken">requirement</span></th>
+<th>방법 <span class="sc-ken">method</span></th>
+<th>등급 <span class="sc-ken">severity</span></th>
+<th>결과 <span class="sc-ken">status</span></th>
+<th>근거 <span class="sc-ken">findings</span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="sc-cat"><td colspan="6">식별 및 인증 <span class="sc-ken">Identification and authentication</span></td></tr>
+<tr class="sc-row-bad">
+<td class="sc-mono sc-id">SF-1.1<br><span class="sc-ref">1.3</span></td>
+<td>
+<div class="sc-req-ko">소스에 자격증명(비밀번호, 토큰, 키)을 하드코딩하지 않는다</div>
+<div class="sc-req-en">No credentials (passwords, tokens, keys) are hardcoded in source</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">자동 <span class="sc-ken">auto</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-fail">미충족 <span class="sc-ken">fail</span></span>
+</td>
+<td class="sc-ev">
+<div class="sc-fpos">internal/adapter/secure/scan.go:84</div>
+<div class="sc-fdet">literal embeds a password= credential</div>
+<div class="sc-fpos">internal/adapter/secure/scan.go:84</div>
+<div class="sc-fdet">literal embeds a password= credential</div>
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-1.3<br><span class="sc-ref">1.1</span></td>
+<td>
+<div class="sc-req-ko">사용자는 제품의 기능을 쓰기 전에 식별 및 인증을 수행한다</div>
+<div class="sc-req-en">Every user is identified and authenticated before any product function</div>
+<div class="sc-guide-ko"><span class="sc-k">확인 안내 <span class="sc-ken">guidance</span></span> 모든 관리·서비스 엔드포인트가 인증 뒤에만 노출되는지 라우팅 표와 대비한다. go-anything rbac로 구조적으로 확인할 수 있다</div>
+<div class="sc-guide-en">Check the route table: every admin and service endpoint must sit behind authentication. go-anything rbac verifies this structurally</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">수동 <span class="sc-ken">manual</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-manual">사람 확인 <span class="sc-ken">manual</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-1.4<br><span class="sc-ref">1.2</span></td>
+<td>
+<div class="sc-req-ko">인증 실패가 반복되면 계정이나 접속을 잠근다</div>
+<div class="sc-req-en">Repeated authentication failures lock the account or the connection</div>
+<div class="sc-guide-ko"><span class="sc-k">확인 안내 <span class="sc-ken">guidance</span></span> 실패 횟수 임계값, 잠금 시간, 잠금 해제 절차를 운영 문서와 대비한다</div>
+<div class="sc-guide-en">Verify the failure threshold, lockout duration and unlock procedure against the operations document</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">수동 <span class="sc-ken">manual</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-manual">사람 확인 <span class="sc-ken">manual</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-1.5<br><span class="sc-ref">1.3</span></td>
+<td>
+<div class="sc-req-ko">패스워드 등 민감정보를 생성할 때 강도를 검증하고 안전하게 저장한다</div>
+<div class="sc-req-en">Passwords and other secrets are strength-checked on creation and stored safely</div>
+<div class="sc-guide-ko"><span class="sc-k">확인 안내 <span class="sc-ken">guidance</span></span> 비밀번호 정책(길이·복잡도), 솔트와 단방향 해시 저장, 기본값 거부를 문서와 대비한다</div>
+<div class="sc-guide-en">Verify the password policy (length, complexity), salted one-way hash storage and rejection of default values</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">수동 <span class="sc-ken">manual</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-manual">사람 확인 <span class="sc-ken">manual</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-1.6<br><span class="sc-ref">1.4</span></td>
+<td>
+<div class="sc-req-ko">인증 정보를 재사용(재전송)할 수 없다</div>
+<div class="sc-req-en">Authentication material cannot be replayed</div>
+<div class="sc-guide-ko"><span class="sc-k">확인 안내 <span class="sc-ken">guidance</span></span> 토큰·세션의 만료, nonce 일회성, 재사용 감지를 설계 문서와 대비한다</div>
+<div class="sc-guide-en">Verify token and session expiry, one-time nonces and replay detection in the design document</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">수동 <span class="sc-ken">manual</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-manual">사람 확인 <span class="sc-ken">manual</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-1.7<br><span class="sc-ref">1.5</span></td>
+<td>
+<div class="sc-req-ko">인증 피드백이 어떤 정보가 틀렸는지 밝히지 않는다</div>
+<div class="sc-req-en">Authentication feedback does not reveal which part failed</div>
+<div class="sc-guide-ko"><span class="sc-k">확인 안내 <span class="sc-ken">guidance</span></span> 로그인 실패 메시지가 아이디·비밀번호를 구분해 알려주지 않는지 확인한다</div>
+<div class="sc-guide-en">Check that login failure messages do not distinguish a wrong user from a wrong password</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">수동 <span class="sc-ken">manual</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-manual">사람 확인 <span class="sc-ken">manual</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr class="sc-cat"><td colspan="6">보안관리 <span class="sc-ken">Security management</span></td></tr>
+<tr>
+<td class="sc-mono sc-id">SF-1.2<br><span class="sc-ref">2.4</span></td>
+<td>
+<div class="sc-req-ko">기본 계정과 기본 비밀번호를 사용하지 않는다</div>
+<div class="sc-req-en">No default accounts or default passwords ship with the system</div>
+<div class="sc-guide-ko"><span class="sc-k">확인 안내 <span class="sc-ken">guidance</span></span> 배포 시 생성되는 계정과 초기 비밀번호 정책, 강제 변경 절차를 문서로 확인한다</div>
+<div class="sc-guide-en">Verify the deployed accounts, initial password policy and forced-change procedure in the deployment docs</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">수동 <span class="sc-ken">manual</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-manual">사람 확인 <span class="sc-ken">manual</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-2.2<br><span class="sc-ref">2.1</span></td>
+<td>
+<div class="sc-req-ko">보안관리 기능이 역할로 분리되어 인가된 관리자만 쓸 수 있다</div>
+<div class="sc-req-en">Security management functions are separated by role and reserved to authorized administrators</div>
+<div class="sc-guide-ko"><span class="sc-k">확인 안내 <span class="sc-ken">guidance</span></span> 관리자 역할 정의와 위임 구조를 문서와 대비한다. go-anything rbac가 허용·거부 결과를 정책과 대비해 확인한다</div>
+<div class="sc-guide-en">Verify the administrator roles and delegation against the documentation. go-anything rbac audits allow and deny outcomes against a declared policy</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">수동 <span class="sc-ken">manual</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-manual">사람 확인 <span class="sc-ken">manual</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-2.3<br><span class="sc-ref">2.2</span></td>
+<td>
+<div class="sc-req-ko">관리 접속이 암호화된 채널로만 이루어진다</div>
+<div class="sc-req-en">Administrative access happens only over an encrypted channel</div>
+<div class="sc-guide-ko"><span class="sc-k">확인 안내 <span class="sc-ken">guidance</span></span> 관리 콘솔·API의 TLS 강제와 평문 포통 폐쇄를 확인한다</div>
+<div class="sc-guide-en">Verify that the admin console and API enforce TLS and plaintext ports are closed</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">수동 <span class="sc-ken">manual</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-manual">사람 확인 <span class="sc-ken">manual</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-2.4<br><span class="sc-ref">2.3</span></td>
+<td>
+<div class="sc-req-ko">보안관리 접속을 허용된 IP로 제한한다</div>
+<div class="sc-req-en">Administrative access is restricted to allowed IP addresses</div>
+<div class="sc-guide-ko"><span class="sc-k">확인 안내 <span class="sc-ken">guidance</span></span> 관리 엔드포인트의 IP 허용 목록(방화벽, 프록시 규칙 포함)을 운영 문서와 대비한다</div>
+<div class="sc-guide-en">Verify the IP allowlist on admin endpoints, including firewall and proxy rules, against the operations document</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">수동 <span class="sc-ken">manual</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-manual">사람 확인 <span class="sc-ken">manual</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-2.5<br><span class="sc-ref">2.5</span></td>
+<td>
+<div class="sc-req-ko">에이전트를 관리(등록·제거·상태 확인)할 수 있다</div>
+<div class="sc-req-en">Agents can be managed: enrolled, removed and health-checked</div>
+<div class="sc-guide-ko"><span class="sc-k">확인 안내 <span class="sc-ken">guidance</span></span> 에이전트형 제품에만 적용한다. 에이전트가 없으면 이 항목은 해당 없음으로 기록한다</div>
+<div class="sc-guide-en">Applies to agent-based products only. With no agent, record this item as not applicable</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">수동 <span class="sc-ken">manual</span></span>
+</td>
+<td>
+<span class="sc-badge sc-rec">권고 <span class="sc-ken">recommended</span></span>
+</td>
+<td>
+<span class="sc-badge sc-manual">사람 확인 <span class="sc-ken">manual</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr class="sc-cat"><td colspan="6">데이터 보호 <span class="sc-ken">Data protection</span></td></tr>
+<tr>
+<td class="sc-mono sc-id">SF-3.4<br><span class="sc-ref">3.1</span></td>
+<td>
+<div class="sc-req-ko">TLS 인증서 검증을 우회(InsecureSkipVerify)하지 않는다</div>
+<div class="sc-req-en">TLS certificate verification is never bypassed (InsecureSkipVerify)</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">자동 <span class="sc-ken">auto</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-pass">통과 <span class="sc-ken">pass</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr class="sc-row-bad">
+<td class="sc-mono sc-id">SF-3.5<br><span class="sc-ref">3.1</span></td>
+<td>
+<div class="sc-req-ko">민감정보를 평문 프로토콜(http://)로 전송하지 않는다</div>
+<div class="sc-req-en">Sensitive data is not sent over plaintext protocol (http://) endpoints</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">자동 <span class="sc-ken">auto</span></span>
+</td>
+<td>
+<span class="sc-badge sc-rec">권고 <span class="sc-ken">recommended</span></span>
+</td>
+<td>
+<span class="sc-badge sc-fail">미충족 <span class="sc-ken">fail</span></span>
+</td>
+<td class="sc-ev">
+<div class="sc-fpos">cmd/go-anything/main.go:1523</div>
+<div class="sc-fdet">plaintext http:// endpoint; loopback URLs (http://localhost, http://127.0.0.1) are treated as test/dev and not reported</div>
+<div class="sc-fpos">internal/adapter/capture/capture.go:50</div>
+<div class="sc-fdet">plaintext http:// endpoint; loopback URLs (http://localhost, http://127.0.0.1) are treated as test/dev and not reported</div>
+<div class="sc-fpos">internal/adapter/frontdoorgen/check.go:198</div>
+<div class="sc-fdet">plaintext http:// endpoint; loopback URLs (http://localhost, http://127.0.0.1) are treated as test/dev and not reported</div>
+<div class="sc-fpos">internal/adapter/frontdoorgen/check.go:248</div>
+<div class="sc-fdet">plaintext http:// endpoint; loopback URLs (http://localhost, http://127.0.0.1) are treated as test/dev and not reported</div>
+<div class="sc-fpos">internal/adapter/secure/scan.go:535</div>
+<div class="sc-fdet">plaintext http:// endpoint; loopback URLs (http://localhost, http://127.0.0.1) are treated as test/dev and not reported</div>
+<div class="sc-fpos">internal/adapter/wiregen/rbac.go:98</div>
+<div class="sc-fdet">plaintext http:// endpoint; loopback URLs (http://localhost, http://127.0.0.1) are treated as test/dev and not reported</div>
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-3.9<br><span class="sc-ref">3.2</span></td>
+<td>
+<div class="sc-req-ko">저장되는 민감정보를 암호화하거나 안전하게 보호한다</div>
+<div class="sc-req-en">Stored sensitive data is encrypted or otherwise protected at rest</div>
+<div class="sc-guide-ko"><span class="sc-k">확인 안내 <span class="sc-ken">guidance</span></span> 파일·데이터베이스에 저장되는 민감정보의 암호화와 키 보관을 설계 문서와 대비한다</div>
+<div class="sc-guide-en">Verify encryption and key custody for sensitive data stored in files and databases against the design document</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">수동 <span class="sc-ken">manual</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-manual">사람 확인 <span class="sc-ken">manual</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr class="sc-cat"><td colspan="6">자체보호 <span class="sc-ken">Self-protection</span></td></tr>
+<tr>
+<td class="sc-mono sc-id">SF-4.4<br><span class="sc-ref">4.1</span></td>
+<td>
+<div class="sc-req-ko">시작이나 초기화 때 보안기능 자체 시험을 수행한다</div>
+<div class="sc-req-en">The product self-tests its security functions at startup or initialization</div>
+<div class="sc-guide-ko"><span class="sc-k">확인 안내 <span class="sc-ken">guidance</span></span> 시작 시 설정·무결성 점검과 실패 시 동작(안전한 거부)을 확인한다</div>
+<div class="sc-guide-en">Verify startup configuration and integrity checks, and that failure fails closed</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">수동 <span class="sc-ken">manual</span></span>
+</td>
+<td>
+<span class="sc-badge sc-rec">권고 <span class="sc-ken">recommended</span></span>
+</td>
+<td>
+<span class="sc-badge sc-manual">사람 확인 <span class="sc-ken">manual</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-4.5<br><span class="sc-ref">4.2</span></td>
+<td>
+<div class="sc-req-ko">자체 구성요소와 업데이트의 무결성을 검증한다</div>
+<div class="sc-req-en">The integrity of own components and updates is verified</div>
+<div class="sc-guide-ko"><span class="sc-k">확인 안내 <span class="sc-ken">guidance</span></span> 바이너리·설정 파일의 무결성 검사 방식과 위변조 시 동작을 확인한다</div>
+<div class="sc-guide-en">Verify how binary and configuration integrity is checked and what happens on tampering</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">수동 <span class="sc-ken">manual</span></span>
+</td>
+<td>
+<span class="sc-badge sc-rec">권고 <span class="sc-ken">recommended</span></span>
+</td>
+<td>
+<span class="sc-badge sc-manual">사람 확인 <span class="sc-ken">manual</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr class="sc-cat"><td colspan="6">업데이트 보호 <span class="sc-ken">Update protection</span></td></tr>
+<tr>
+<td class="sc-mono sc-id">SF-5.3<br><span class="sc-ref">5.1</span></td>
+<td>
+<div class="sc-req-ko">업데이트와 배포물이 서명되고 검증된다</div>
+<div class="sc-req-en">Updates and distributed artifacts are signed and verified</div>
+<div class="sc-guide-ko"><span class="sc-k">확인 안내 <span class="sc-ken">guidance</span></span> 배포 서명·체크섬 절차를 확인한다. go-anything package가 만드는 배포물에 서명과 체크섬을 포함시킨다</div>
+<div class="sc-guide-en">Verify the release signing and checksum procedure. Include signatures and checksums in the artifacts go-anything package produces</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">수동 <span class="sc-ken">manual</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-manual">사람 확인 <span class="sc-ken">manual</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr class="sc-cat"><td colspan="6">안전한 세션 관리 <span class="sc-ken">Safe session management</span></td></tr>
+<tr>
+<td class="sc-mono sc-id">SF-6.1<br><span class="sc-ref">6</span></td>
+<td>
+<div class="sc-req-ko">쿠키는 Secure와 HttpOnly 속성과 함께 발급한다</div>
+<div class="sc-req-en">Cookies are issued with Secure and HttpOnly attributes</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">자동 <span class="sc-ken">auto</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-pass">통과 <span class="sc-ken">pass</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-6.2<br><span class="sc-ref">6.1</span></td>
+<td>
+<div class="sc-req-ko">세션을 잠그고 종료할 수 있다</div>
+<div class="sc-req-en">Sessions can be locked and terminated</div>
+<div class="sc-guide-ko"><span class="sc-k">확인 안내 <span class="sc-ken">guidance</span></span> 비활동 시간 잠금, 사용자·관리자 종료, 재인증 요건을 확인한다</div>
+<div class="sc-guide-en">Verify idle lockout, user and administrator termination, and reauthentication requirements</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">수동 <span class="sc-ken">manual</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-manual">사람 확인 <span class="sc-ken">manual</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-6.3<br><span class="sc-ref">6.2</span></td>
+<td>
+<div class="sc-req-ko">동시접속 세션 수를 제한한다</div>
+<div class="sc-req-en">Concurrent sessions per user are limited</div>
+<div class="sc-guide-ko"><span class="sc-k">확인 안내 <span class="sc-ken">guidance</span></span> 계정당 동시 세션 상한과 초과 시 정책(차단·기존 종료)을 확인한다</div>
+<div class="sc-guide-en">Verify the per-account concurrent session cap and the policy on exceeding it (reject or evict)</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">수동 <span class="sc-ken">manual</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-manual">사람 확인 <span class="sc-ken">manual</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr class="sc-cat"><td colspan="6">감사기록 <span class="sc-ken">Audit logging</span></td></tr>
+<tr class="sc-row-bad">
+<td class="sc-mono sc-id">SF-5.1<br><span class="sc-ref">7.1</span></td>
+<td>
+<div class="sc-req-ko">인증·권한 이벤트가 로그로 남는다</div>
+<div class="sc-req-en">Authentication and authorization events are logged</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">자동 <span class="sc-ken">auto</span></span>
+</td>
+<td>
+<span class="sc-badge sc-rec">권고 <span class="sc-ken">recommended</span></span>
+</td>
+<td>
+<span class="sc-badge sc-fail">미충족 <span class="sc-ken">fail</span></span>
+</td>
+<td class="sc-ev">
+<div class="sc-fpos">/mnt/e/DEV/go-anything</div>
+<div class="sc-fdet">no logging calls found in non-test sources</div>
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-5.2<br><span class="sc-ref">7.1</span></td>
+<td>
+<div class="sc-req-ko">로그에 비밀번호·토큰·개인정보를 기록하지 않는다</div>
+<div class="sc-req-en">Passwords, tokens and personal data are never written to logs</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">자동 <span class="sc-ken">auto</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-pass">통과 <span class="sc-ken">pass</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-5.4<br><span class="sc-ref">7.2</span></td>
+<td>
+<div class="sc-req-ko">감사기록을 조회할 수 있다</div>
+<div class="sc-req-en">Audit records can be queried</div>
+<div class="sc-guide-ko"><span class="sc-k">확인 안내 <span class="sc-ken">guidance</span></span> 기록 조회 도구와 검색 조건(시간·사용자·이벤트)을 확인한다</div>
+<div class="sc-guide-en">Verify the query facility and its filters (time, user, event)</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">수동 <span class="sc-ken">manual</span></span>
+</td>
+<td>
+<span class="sc-badge sc-rec">권고 <span class="sc-ken">recommended</span></span>
+</td>
+<td>
+<span class="sc-badge sc-manual">사람 확인 <span class="sc-ken">manual</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-5.5<br><span class="sc-ref">7.3</span></td>
+<td>
+<div class="sc-req-ko">감사기록이 변조되지 않도록 보호한다</div>
+<div class="sc-req-en">Audit records are protected against tampering</div>
+<div class="sc-guide-ko"><span class="sc-k">확인 안내 <span class="sc-ken">guidance</span></span> 기록의 append-only 보관, 권한 분리, 원격 전송 중 하나 이상을 확인한다</div>
+<div class="sc-guide-en">Verify at least one of append-only storage, privilege separation or remote forwarding</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">수동 <span class="sc-ken">manual</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-manual">사람 확인 <span class="sc-ken">manual</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-5.6<br><span class="sc-ref">7.4</span></td>
+<td>
+<div class="sc-req-ko">감사기록 손실이 예측되면 대응 행동을 취한다</div>
+<div class="sc-req-en">A predicted loss of audit records triggers a response</div>
+<div class="sc-guide-ko"><span class="sc-k">확인 안내 <span class="sc-ken">guidance</span></span> 저장 공간 임계값 알림과 임계 초과 시 동작(알림·기록 유지)을 확인한다</div>
+<div class="sc-guide-en">Verify storage threshold alerts and the behavior on exceeding them</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">수동 <span class="sc-ken">manual</span></span>
+</td>
+<td>
+<span class="sc-badge sc-rec">권고 <span class="sc-ken">recommended</span></span>
+</td>
+<td>
+<span class="sc-badge sc-manual">사람 확인 <span class="sc-ken">manual</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-5.7<br><span class="sc-ref">7.5</span></td>
+<td>
+<div class="sc-req-ko">감사기록이 손실되지 않도록 한다</div>
+<div class="sc-req-en">Audit records are not lost</div>
+<div class="sc-guide-ko"><span class="sc-k">확인 안내 <span class="sc-ken">guidance</span></span> 휘발성 메모리 버퍼의 크기와 디스크 기록 시점을 확인한다</div>
+<div class="sc-guide-en">Verify the size of any volatile in-memory buffer and when records reach durable storage</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">수동 <span class="sc-ken">manual</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-manual">사람 확인 <span class="sc-ken">manual</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr class="sc-cat"><td colspan="6">암호지원 <span class="sc-ken">Cryptographic support</span></td></tr>
+<tr>
+<td class="sc-mono sc-id">SF-3.1<br><span class="sc-ref">8.1</span></td>
+<td>
+<div class="sc-req-ko">약한 해시(MD5, SHA-1)를 보안 목적으로 사용하지 않는다</div>
+<div class="sc-req-en">Weak hashes (MD5, SHA-1) are not used for security purposes</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">자동 <span class="sc-ken">auto</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-pass">통과 <span class="sc-ken">pass</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-3.2<br><span class="sc-ref">8.1</span></td>
+<td>
+<div class="sc-req-ko">약한 암호 알고리즘(DES, 3DES, RC4)을 사용하지 않는다</div>
+<div class="sc-req-en">Weak ciphers (DES, 3DES, RC4) are not used</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">자동 <span class="sc-ken">auto</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-pass">통과 <span class="sc-ken">pass</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr class="sc-row-bad">
+<td class="sc-mono sc-id">SF-3.3<br><span class="sc-ref">8.2</span></td>
+<td>
+<div class="sc-req-ko">보안 값 생성에 crypto/rand를 쓰고 math/rand를 쓰지 않는다</div>
+<div class="sc-req-en">Security values come from crypto/rand, never math/rand</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">자동 <span class="sc-ken">auto</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-fail">미충족 <span class="sc-ken">fail</span></span>
+</td>
+<td class="sc-ev">
+<div class="sc-fpos">internal/domain/fuzzgen.go:4</div>
+<div class="sc-fdet">non-crypto randomness import: math/rand/v2</div>
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-3.6<br><span class="sc-ref">8.2</span></td>
+<td>
+<div class="sc-req-ko">암호키를 정해진 길이와 방식으로 생성한다</div>
+<div class="sc-req-en">Cryptographic keys are generated at the required length and manner</div>
+<div class="sc-guide-ko"><span class="sc-k">확인 안내 <span class="sc-ken">guidance</span></span> 키 길이(예: 대칭 128비트 이상)와 생성 엔트로피 원천을 확인한다</div>
+<div class="sc-guide-en">Verify key lengths (e.g. at least 128-bit symmetric) and the entropy source</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">수동 <span class="sc-ken">manual</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-manual">사람 확인 <span class="sc-ken">manual</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-3.7<br><span class="sc-ref">8.3</span></td>
+<td>
+<div class="sc-req-ko">암호키를 안전하게 저장한다</div>
+<div class="sc-req-en">Cryptographic keys are stored safely</div>
+<div class="sc-guide-ko"><span class="sc-k">확인 안내 <span class="sc-ken">guidance</span></span> 키 파일 권한, 키 보관소 사용, 코드·설정 내 키 금지를 확인한다</div>
+<div class="sc-guide-en">Verify key file permissions, use of a key store, and that no key sits in code or configuration</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">수동 <span class="sc-ken">manual</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-manual">사람 확인 <span class="sc-ken">manual</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-3.8<br><span class="sc-ref">8.4</span></td>
+<td>
+<div class="sc-req-ko">암호키를 안전하게 파기한다</div>
+<div class="sc-req-en">Cryptographic keys are destroyed safely</div>
+<div class="sc-guide-ko"><span class="sc-k">확인 안내 <span class="sc-ken">guidance</span></span> 교체·폐기 시 키와 파생 데이터의 삭제 절차를 확인한다</div>
+<div class="sc-guide-en">Verify the deletion procedure for keys and derived data on rotation and retirement</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">수동 <span class="sc-ken">manual</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-manual">사람 확인 <span class="sc-ken">manual</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr class="sc-cat"><td colspan="6">취약성 대응 <span class="sc-ken">Vulnerability handling</span></td></tr>
+<tr class="sc-row-bad">
+<td class="sc-mono sc-id">SF-4.1<br><span class="sc-ref">9.1</span></td>
+<td>
+<div class="sc-req-ko">SQL을 문자열 조립(덧셈, Sprintf)으로 만들지 않는다</div>
+<div class="sc-req-en">SQL is never assembled by string concatenation or Sprintf</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">자동 <span class="sc-ken">auto</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-fail">미충족 <span class="sc-ken">fail</span></span>
+</td>
+<td class="sc-ev">
+<div class="sc-fpos">internal/adapter/dbsnap/dbsnap.go:190</div>
+<div class="sc-fdet">argument of Query is assembled with + concatenation</div>
+<div class="sc-fpos">internal/adapter/dbsnap/dbsnap.go:239</div>
+<div class="sc-fdet">argument of Query is assembled with + concatenation</div>
+</td>
+</tr>
+<tr class="sc-row-bad">
+<td class="sc-mono sc-id">SF-4.2<br><span class="sc-ref">9.1</span></td>
+<td>
+<div class="sc-req-ko">셸 명령을 문자열 조립으로 실행하지 않는다</div>
+<div class="sc-req-en">Shell commands are not executed from assembled strings</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">자동 <span class="sc-ken">auto</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-fail">미충족 <span class="sc-ken">fail</span></span>
+</td>
+<td class="sc-ev">
+<div class="sc-fpos">cmd/go-anything/main.go:592</div>
+<div class="sc-fdet">first argument of exec.Command is not a string literal (assembled command)</div>
+<div class="sc-fpos">internal/adapter/analyze/deps.go:79</div>
+<div class="sc-fdet">first argument of exec.CommandContext is not a string literal (assembled command)</div>
+<div class="sc-fpos">internal/adapter/analyze/python.go:110</div>
+<div class="sc-fdet">first argument of exec.CommandContext is not a string literal (assembled command)</div>
+<div class="sc-fpos">internal/adapter/app/app.go:99</div>
+<div class="sc-fdet">first argument of exec.CommandContext is not a string literal (assembled command)</div>
+<div class="sc-fpos">internal/adapter/cover/cover.go:83</div>
+<div class="sc-fdet">first argument of exec.CommandContext is not a string literal (assembled command)</div>
+<div class="sc-fpos">internal/adapter/doctor/probe.go:62</div>
+<div class="sc-fdet">first argument of exec.CommandContext is not a string literal (assembled command)</div>
+<div class="sc-fpos">internal/adapter/doctor/probe.go:75</div>
+<div class="sc-fdet">first argument of exec.CommandContext is not a string literal (assembled command)</div>
+<div class="sc-fpos">internal/adapter/frontdoorgen/check.go:88</div>
+<div class="sc-fdet">first argument of exec.CommandContext is not a string literal (assembled command)</div>
+<div class="sc-fpos">internal/adapter/frontdoorgen/check.go:164</div>
+<div class="sc-fdet">first argument of exec.Command is not a string literal (assembled command)</div>
+<div class="sc-fpos">internal/adapter/gatecheck/gatecheck.go:121</div>
+<div class="sc-fdet">first argument of exec.CommandContext is not a string literal (assembled command)</div>
+<div class="sc-fpos">internal/adapter/layout/check.go:67</div>
+<div class="sc-fdet">first argument of exec.CommandContext is not a string literal (assembled command)</div>
+<div class="sc-fpos">internal/adapter/layout/layout.go:288</div>
+<div class="sc-fdet">first argument of exec.CommandContext is not a string literal (assembled command)</div>
+<div class="sc-fpos">internal/adapter/layout/layout.go:327</div>
+<div class="sc-fdet">first argument of exec.CommandContext is not a string literal (assembled command)</div>
+<div class="sc-fpos">internal/adapter/secure/scan.go:807</div>
+<div class="sc-fdet">first argument of exec.CommandContext is not a string literal (assembled command)</div>
+<div class="sc-fpos">internal/adapter/shadowgen/load.go:33</div>
+<div class="sc-fdet">first argument of exec.CommandContext is not a string literal (assembled command)</div>
+<div class="sc-fpos">internal/adapter/shadowgen/shadowgen.go:181</div>
+<div class="sc-fdet">first argument of exec.CommandContext is not a string literal (assembled command)</div>
+<div class="sc-fpos">internal/adapter/subject/exec.go:39</div>
+<div class="sc-fdet">first argument of exec.CommandContext is not a string literal (assembled command)</div>
+<div class="sc-fpos">internal/adapter/wiregen/agent.go:74</div>
+<div class="sc-fdet">first argument of exec.CommandContext is not a string literal (assembled command)</div>
+<div class="sc-fpos">internal/adapter/wiregen/agent.go:108</div>
+<div class="sc-fdet">first argument of exec.CommandContext is not a string literal (assembled command)</div>
+<div class="sc-fpos">internal/adapter/wiregen/probe.go:149</div>
+<div class="sc-fdet">first argument of exec.CommandContext is not a string literal (assembled command)</div>
+<div class="sc-fpos">internal/adapter/wiregen/probe.go:194</div>
+<div class="sc-fdet">first argument of exec.Command is not a string literal (assembled command)</div>
+<div class="sc-fpos">internal/adapter/wiregen/probe.go:263</div>
+<div class="sc-fdet">first argument of exec.Command is not a string literal (assembled command)</div>
+<div class="sc-fpos">internal/adapter/wiregen/verify.go:23</div>
+<div class="sc-fdet">first argument of exec.CommandContext is not a string literal (assembled command)</div>
+<div class="sc-fpos">internal/adapter/wiregen/verify.go:81</div>
+<div class="sc-fdet">first argument of exec.Command is not a string literal (assembled command)</div>
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-4.3<br><span class="sc-ref">9.1</span></td>
+<td>
+<div class="sc-req-ko">외부 입력으로 만든 파일 경로가 허용 범위 안으로 검증된다</div>
+<div class="sc-req-en">File paths built from external input are validated against an allowlist</div>
+<div class="sc-guide-ko"><span class="sc-k">확인 안내 <span class="sc-ken">guidance</span></span> 파일 업로드·다운로드 경로의 정규화와 접두어 검증을 코드 리뷰로 확인한다</div>
+<div class="sc-guide-en">Review path canonicalization and prefix checks on upload and download paths</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">수동 <span class="sc-ken">manual</span></span>
+</td>
+<td>
+<span class="sc-badge sc-rec">권고 <span class="sc-ken">recommended</span></span>
+</td>
+<td>
+<span class="sc-badge sc-manual">사람 확인 <span class="sc-ken">manual</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-2.1<br><span class="sc-ref">9.3</span></td>
+<td>
+<div class="sc-req-ko">디버그·관리 엔드포인트(pprof, expvar)가 운영 빌드에 노출되지 않는다</div>
+<div class="sc-req-en">Debug and admin endpoints (pprof, expvar) are not exposed in production builds</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">자동 <span class="sc-ken">auto</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-pass">통과 <span class="sc-ken">pass</span></span>
+</td>
+<td class="sc-ev">
+<div class="sc-note-line"><span class="sc-k">비고 <span class="sc-ken">note</span></span> test-only usage is excluded by scanning non-test files only</div>
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-7.1<br><span class="sc-ref">9.2</span></td>
+<td>
+<div class="sc-req-ko">알려진 취약점이 없는지 govulncheck로 확인한다</div>
+<div class="sc-req-en">govulncheck reports no known vulnerabilities</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">도구 <span class="sc-ken">tool</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-skip">건너뜀 <span class="sc-ken">skip</span></span>
+</td>
+<td class="sc-ev">
+<div class="sc-note-line"><span class="sc-k">비고 <span class="sc-ken">note</span></span> govulncheck not found in PATH</div>
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-7.2<br><span class="sc-ref">9.2</span></td>
+<td>
+<div class="sc-req-ko">의존성이 go.sum으로 고정되어 있다</div>
+<div class="sc-req-en">Dependencies are pinned by go.sum</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">자동 <span class="sc-ken">auto</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-pass">통과 <span class="sc-ken">pass</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+<tr>
+<td class="sc-mono sc-id">SF-10.1<br><span class="sc-ref">9.1</span></td>
+<td>
+<div class="sc-req-ko">go vet이 경고 없이 통과한다</div>
+<div class="sc-req-en">go vet passes without findings</div>
+</td>
+<td>
+<span class="sc-badge sc-plain">도구 <span class="sc-ken">tool</span></span>
+</td>
+<td>
+<span class="sc-badge sc-mand">필수 <span class="sc-ken">mandatory</span></span>
+</td>
+<td>
+<span class="sc-badge sc-pass">통과 <span class="sc-ken">pass</span></span>
+</td>
+<td class="sc-ev">
+</td>
+</tr>
+</tbody>
+</table>
+<footer>
+<p>요약: 이 체크리스트는 공식 원문을 대체하지 않으며, manual 항목은 공식 문서와 대비하여 사람이 확인해야 한다.</p>
+<p>In short: this checklist does not replace the official text; manual items must be verified by a person against it.</p>
+<p>오프라인 산출물: 이 문서의 값은 어디로도 전송되지 않는다.</p>
+<p>Offline artifact: values in this document are not transmitted anywhere.</p>
+</footer>
+</body>
+</html>

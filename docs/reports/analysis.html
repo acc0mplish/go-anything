@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Analysis v1: github.com/go-anything/go-anything</title>
+<style>
+  :root { --fg:#1d1d1f; --muted:#57606a; --line:#d0d7de; --head:#f6f8fa; --ok:#1a7f37; --bad:#cf222e;
+          --warn:#9a6700; --info:#0969da; --okbg:#dafbe1; --badbg:#ffebe9; --warnbg:#fff8c5; --infobg:#ddf4ff; }
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 1080px; color: var(--fg); padding: 0 1rem; line-height: 1.45; }
+  h1 { font-size: 1.5rem; word-break: break-all; margin-bottom: .25rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid var(--line); padding-bottom: .25rem; }
+  .meta { color: var(--muted); font-size: .85rem; margin: 0 0 1rem; }
+  .meta code { font-size: .8rem; }
+  nav.toc { font-size: .85rem; margin: .5rem 0 1rem; }
+  nav.toc a { margin-right: .9rem; color: var(--info); text-decoration: none; }
+  .banner { border-radius: 8px; padding: .8rem 1rem; margin: .75rem 0 1rem; border: 1px solid var(--line); }
+  .banner.pass { background: var(--okbg); border-color: var(--ok); }
+  .banner.fail { background: var(--badbg); border-color: var(--bad); }
+  .banner.warn { background: var(--warnbg); border-color: var(--warn); }
+  .banner.info { background: var(--infobg); border-color: var(--info); }
+  .banner strong.verdict { font-size: 1.1rem; }
+  .banner p { margin: .35rem 0 0; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .6rem; margin: .75rem 0 1rem; }
+  .card { border: 1px solid var(--line); border-radius: 8px; padding: .55rem .75rem; }
+  .card .k { color: var(--muted); font-size: .75rem; text-transform: uppercase; letter-spacing: .03em; }
+  .card .v { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .card .s { color: var(--muted); font-size: .8rem; }
+  .card.bad .v { color: var(--bad); } .card.ok .v { color: var(--ok); } .card.warn .v { color: var(--warn); }
+  table { border-collapse: collapse; width: 100%; margin: .5rem 0 1.25rem; }
+  th, td { border: 1px solid var(--line); padding: .35rem .55rem; text-align: left; vertical-align: top; }
+  th { background: var(--head); font-size: .85rem; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .mono, td.path, td.val { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82rem; word-break: break-all; }
+  pre.val { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82rem; margin: 0; white-space: pre-wrap; word-break: break-all; }
+  mark.diff { background: #ffd8d3; color: inherit; border-bottom: 2px solid var(--bad); }
+  .ws { color: #8c959f; }
+  .badge { display: inline-block; font-size: .72rem; padding: .05rem .45rem; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+  .badge.ok { background: var(--okbg); color: var(--ok); border-color: var(--ok); }
+  .badge.bad { background: var(--badbg); color: var(--bad); border-color: var(--bad); }
+  .badge.warn { background: var(--warnbg); color: var(--warn); border-color: var(--warn); }
+  .badge.info { background: var(--infobg); color: var(--info); border-color: var(--info); }
+  .bar { background: #eaeef2; border-radius: 4px; height: .55rem; min-width: 80px; overflow: hidden; }
+  .bar > span { display: block; height: 100%; background: var(--ok); }
+  .bar.mid > span { background: var(--warn); } .bar.low > span { background: var(--bad); }
+  .note { color: var(--muted); font-size: .88rem; }
+   
+  .bi-en { display: inline; }
+  .bi-ko { display: block; color: var(--muted); font-size: .85em; line-height: 1.3; margin-top: .1rem; }
+  ol.actions li { margin: .25rem 0; }
+  details { margin: .5rem 0 1rem; } details > summary { cursor: pointer; color: var(--info); }
+  footer { color: #6e7781; font-size: .8rem; margin-top: 2.5rem; border-top: 1px solid var(--line); padding-top: .5rem; }
+  @media print { details { display: block; } details > summary { display: none; } nav.toc { display: none; } }
+
+  td.path, td.val { word-break: normal; overflow-wrap: anywhere; }
+  td.bar-cell { white-space: nowrap; }
+  td.nowrap { white-space: nowrap; }
+  table.order { table-layout: fixed; }
+  table.order col.c-order { width: 4.5rem; } table.order col.c-ready { width: 150px; }
+  table.order col.c-pkg { width: 290px; } table.order col.c-lines { width: 5rem; }
+  td.bar-cell .bar { display: inline-block; width: 90px; vertical-align: middle; margin-left: .4rem; }
+  h3 { font-size: 1rem; margin: 1.25rem 0 .25rem; }
+  ul.kinds { padding-left: 1.1rem; } ul.kinds li { margin: .2rem 0; }
+  ul.paths { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82rem; }
+</style>
+</head>
+<body>
+<h1>Analysis v1: github.com/go-anything/go-anything</h1>
+<p class="meta">Root <code>/mnt/e/DEV/go-anything</code> · version 1 · generated 2026-11-21T18:45:49Z · paths below are relative to the module; hover for the full path</p>
+<nav class="toc">
+  <a href="#bottom-line"><span class="bi-en">Bottom line</span><span class="bi-ko" lang="ko">결론</span></a>
+  <a href="#summary"><span class="bi-en">Summary</span><span class="bi-ko" lang="ko">요약</span></a>
+  <a href="#changes"><span class="bi-en">Changes</span><span class="bi-ko" lang="ko">변경 사항</span></a>
+  <a href="#start-here"><span class="bi-en">Start here</span><span class="bi-ko" lang="ko">여기서 시작</span></a>
+  <a href="#order"><span class="bi-en">Porting order</span><span class="bi-ko" lang="ko">포팅 순서</span></a>
+  <a href="#risks"><span class="bi-en">Risks</span><span class="bi-ko" lang="ko">위험</span></a>
+  <a href="#packages"><span class="bi-en">Packages</span><span class="bi-ko" lang="ko">패키지</span></a>
+  <a href="#how"><span class="bi-en">How to read this</span><span class="bi-ko" lang="ko">읽는 법</span></a>
+</nav>
+
+<div class="banner info" id="bottom-line">
+  <strong class="verdict"><span class="bi-en">Bottom line</span><span class="bi-ko" lang="ko">결론</span></strong>
+  <p>Start with wave 0: 6 of its 7 packages are ready (readiness &gt;= 90): internal/adapter/mcp, internal/adapter/setup, internal/adapter/profile, internal/adapter/shadowgen and 2 more.</p>
+  <p>First functions: internal/domain.FuncID, internal/domain.ClipForReport and internal/domain.Normalize (leaf functions with plain signatures, most called first).</p>
+  <p>No package scores below 60; port the lowest with care: internal/adapter/doctor (70: external side effects, no tests of its own), internal/adapter/layout (80: external side effects, goroutines) and 7 more.</p>
+</div>
+
+<h2 id="summary"><span class="bi-en">Summary</span><span class="bi-ko" lang="ko">요약</span></h2>
+<div class="cards">
+  
+  <div class="card"><div class="k">Packages</div><div class="v">25</div><div class="s">264 exported funcs</div><span class="bi-en"></span><span class="bi-ko" lang="ko">패키지</span></div>
+  <div class="card"><div class="k"><span class="bi-en">Lines</span><span class="bi-ko" lang="ko">라인 수</span></div><div class="v">24704</div><div class="s">non-test Go lines</div></div>
+  <div class="card"><div class="k"><span class="bi-en">Functions</span><span class="bi-ko" lang="ko">함수</span></div><div class="v">739</div><div class="s">functions and methods</div></div>
+  
+  <div class="card"><div class="k">Static call edges</div><div class="v">1062</div><div class="s">inside the module</div><span class="bi-en"></span><span class="bi-ko" lang="ko">정적 호출 간선</span></div>
+  <div class="card warn"><div class="k">Dynamic calls</div><div class="v">405</div><div class="s">28% unresolved</div><span class="bi-en"></span><span class="bi-ko" lang="ko">동적 호출</span></div>
+  
+  <div class="card"><div class="k">Risk sites</div><div class="v">8</div><div class="s">2 kinds</div><span class="bi-en"></span><span class="bi-ko" lang="ko">위험 지점</span></div>
+  <div class="card ok"><div class="k"><span class="bi-en">Start here</span><span class="bi-ko" lang="ko">여기서 시작</span></div><div class="v">167</div><div class="s">first-port candidates</div></div>
+</div>
+<h2 id="changes">Changes</h2>
+<span class="bi-en"></span><span class="bi-ko" lang="ko">변경 사항</span>
+<p class="note">This is the first analysis of this module, so there is nothing to compare with yet. The next run will show what changed.</p>
+<h2 id="start-here"><span class="bi-en">Start here: best first ports</span><span class="bi-ko" lang="ko">여기서 시작: 가장 좋은 첫 포팅</span></h2>
+<p class="note">Exported functions outside package main with a plain signature, no dynamic calls,
+no goroutines, no cgo, and no calls into other module packages. Most called first.
+Showing 10 of 167.</p>
+<table>
+  <tr><th><span class="bi-en">Function</span><span class="bi-ko" lang="ko">함수</span></th><th><span class="bi-en">Where</span><span class="bi-ko" lang="ko">위치</span></th><th class="num"><span class="bi-en">Callers</span><span class="bi-ko" lang="ko">호출자</span></th><th><span class="bi-en">Signature</span><span class="bi-ko" lang="ko">시그니처</span></th></tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/domain.FuncID">internal/domain.FuncID</td>
+    <td class="path nowrap">internal/domain/analysis.go:156</td>
+    <td class="num">13</td>
+    <td class="path" title="func(importPath string, receiver string, name string) string">func(importPath string, receiver string, name string) string</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/domain.ClipForReport">internal/domain.ClipForReport</td>
+    <td class="path nowrap">internal/domain/compare.go:485</td>
+    <td class="num">9</td>
+    <td class="path" title="func(s string, limit int) string">func(s string, limit int) string</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/domain.Normalize">internal/domain.Normalize</td>
+    <td class="path nowrap">internal/domain/answer.go:91</td>
+    <td class="num">7</td>
+    <td class="path" title="func(s string) string">func(s string) string</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/domain.AppRecording.Validate">internal/domain.AppRecording.Validate</td>
+    <td class="path nowrap">internal/domain/appcase.go:56</td>
+    <td class="num">6</td>
+    <td class="path" title="func() error">func() error</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/domain.Recording.Validate">internal/domain.Recording.Validate</td>
+    <td class="path nowrap">internal/domain/recording.go:33</td>
+    <td class="num">6</td>
+    <td class="path" title="func() error">func() error</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/adapter/layout.Target.String">internal/adapter/layout.Target.String</td>
+    <td class="path nowrap">internal/adapter/layout/layout.go:37</td>
+    <td class="num">5</td>
+    <td class="path" title="func() string">func() string</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/usecase.ValidUnitName">internal/usecase.ValidUnitName</td>
+    <td class="path nowrap">internal/usecase/wiregen.go:23</td>
+    <td class="num">5</td>
+    <td class="path" title="func(name string) error">func(name string) error</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/adapter/gatecheck.Run">internal/adapter/gatecheck.Run</td>
+    <td class="path nowrap">internal/adapter/gatecheck/gatecheck.go:29</td>
+    <td class="num">4</td>
+    <td class="path" title="func(opts Options) []github.com/go-anything/go-anything/internal/domain.GateCheck">func(opts Options) []internal/domain.GateCheck</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/adapter/mcp.Server.Register">internal/adapter/mcp.Server.Register</td>
+    <td class="path nowrap">internal/adapter/mcp/server.go:40</td>
+    <td class="num">4</td>
+    <td class="path" title="func(t Tool)">func(t Tool)</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/domain.AnalysisReport.IsGo">internal/domain.AnalysisReport.IsGo</td>
+    <td class="path nowrap">internal/domain/analysis_report.go:268</td>
+    <td class="num">4</td>
+    <td class="path" title="func() bool">func() bool</td>
+  </tr>
+</table>
+
+<h2 id="order"><span class="bi-en">Porting order</span><span class="bi-ko" lang="ko">포팅 순서</span></h2>
+<p class="note">Port wave by wave: a package comes after every package it imports. Inside a wave the most ready comes first. Green bar: readiness 90 or more. Amber: 60 to 89. Red: below 60.</p>
+<h3>Wave 0 · 7 packages, 6 ready · no imports inside the module</h3>
+<table class="order">
+  <colgroup><col class="c-order"><col class="c-ready"><col class="c-pkg"><col class="c-lines"><col></colgroup>
+  <tr><th class="num"><span class="bi-en">Order</span><span class="bi-ko" lang="ko">순서</span></th><th><span class="bi-en">Readiness</span><span class="bi-ko" lang="ko">준비도</span></th><th><span class="bi-en">Package</span><span class="bi-ko" lang="ko">패키지</span></th><th class="num"><span class="bi-en">Lines</span><span class="bi-ko" lang="ko">라인</span></th><th><span class="bi-en">Risks</span><span class="bi-ko" lang="ko">위험</span></th></tr>
+  <tr>
+    <td class="num">1</td>
+    <td class="num bar-cell">100<span class="bar"><span style="width: 100%"></span></span></td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/mcp">internal/adapter/mcp</td>
+    <td class="num">168</td>
+    <td>none</td>
+  </tr>
+  <tr>
+    <td class="num">2</td>
+    <td class="num bar-cell">100<span class="bar"><span style="width: 100%"></span></span></td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/setup">internal/adapter/setup</td>
+    <td class="num">487</td>
+    <td>none</td>
+  </tr>
+  <tr>
+    <td class="num">3</td>
+    <td class="num bar-cell">90<span class="bar"><span style="width: 90%"></span></span></td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/profile">internal/adapter/profile</td>
+    <td class="num">149</td>
+    <td><div>external side effects: net, net/http, os/exec</div></td>
+  </tr>
+  <tr>
+    <td class="num">4</td>
+    <td class="num bar-cell">90<span class="bar"><span style="width: 90%"></span></span></td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/shadowgen">internal/adapter/shadowgen</td>
+    <td class="num">1139</td>
+    <td><div>external side effects: os/exec</div></td>
+  </tr>
+  <tr>
+    <td class="num">5</td>
+    <td class="num bar-cell">90<span class="bar"><span style="width: 90%"></span></span></td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/subject">internal/adapter/subject</td>
+    <td class="num">58</td>
+    <td><div>external side effects: os/exec</div></td>
+  </tr>
+  <tr>
+    <td class="num">6</td>
+    <td class="num bar-cell">90<span class="bar"><span style="width: 90%"></span></span></td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/domain">internal/domain</td>
+    <td class="num">4721</td>
+    <td><div>wide API: more than 20 exported functions</div></td>
+  </tr>
+  <tr>
+    <td class="num">7</td>
+    <td class="num bar-cell">80<span class="bar mid"><span style="width: 80%"></span></span></td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/layout">internal/adapter/layout</td>
+    <td class="num">988</td>
+    <td><div>external side effects: os/exec</div><div>goroutines: 1 go statement(s), ordering is not deterministic at internal/adapter/layout/layout.go:133</div></td>
+  </tr>
+</table>
+<h3>Wave 1 · 11 packages, 7 ready · imports only earlier waves</h3>
+<table class="order">
+  <colgroup><col class="c-order"><col class="c-ready"><col class="c-pkg"><col class="c-lines"><col></colgroup>
+  <tr><th class="num"><span class="bi-en">Order</span><span class="bi-ko" lang="ko">순서</span></th><th><span class="bi-en">Readiness</span><span class="bi-ko" lang="ko">준비도</span></th><th><span class="bi-en">Package</span><span class="bi-ko" lang="ko">패키지</span></th><th class="num"><span class="bi-en">Lines</span><span class="bi-ko" lang="ko">라인</span></th><th><span class="bi-en">Risks</span><span class="bi-ko" lang="ko">위험</span></th></tr>
+  <tr>
+    <td class="num">8</td>
+    <td class="num bar-cell">100<span class="bar"><span style="width: 100%"></span></span></td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/routesfile">internal/adapter/routesfile</td>
+    <td class="num">114</td>
+    <td>none</td>
+  </tr>
+  <tr>
+    <td class="num">9</td>
+    <td class="num bar-cell">100<span class="bar"><span style="width: 100%"></span></span></td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/store">internal/adapter/store</td>
+    <td class="num">124</td>
+    <td>none</td>
+  </tr>
+  <tr>
+    <td class="num">10</td>
+    <td class="num bar-cell">90<span class="bar"><span style="width: 90%"></span></span></td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/app">internal/adapter/app</td>
+    <td class="num">166</td>
+    <td><div>external side effects: net/http, os/exec</div></td>
+  </tr>
+  <tr>
+    <td class="num">11</td>
+    <td class="num bar-cell">90<span class="bar"><span style="width: 90%"></span></span></td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/cover">internal/adapter/cover</td>
+    <td class="num">97</td>
+    <td><div>external side effects: os/exec</div></td>
+  </tr>
+  <tr>
+    <td class="num">12</td>
+    <td class="num bar-cell">90<span class="bar"><span style="width: 90%"></span></span></td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/dbsnap">internal/adapter/dbsnap</td>
+    <td class="num">386</td>
+    <td><div>external side effects: database/sql</div></td>
+  </tr>
+  <tr>
+    <td class="num">13</td>
+    <td class="num bar-cell">90<span class="bar"><span style="width: 90%"></span></span></td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/gatecheck">internal/adapter/gatecheck</td>
+    <td class="num">143</td>
+    <td><div>external side effects: os/exec</div></td>
+  </tr>
+  <tr>
+    <td class="num">14</td>
+    <td class="num bar-cell">90<span class="bar"><span style="width: 90%"></span></span></td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/usecase">internal/usecase</td>
+    <td class="num">2794</td>
+    <td><div>wide API: more than 20 exported functions</div></td>
+  </tr>
+  <tr>
+    <td class="num">15</td>
+    <td class="num bar-cell">85<span class="bar mid"><span style="width: 85%"></span></span></td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/secure">internal/adapter/secure</td>
+    <td class="num">867</td>
+    <td><div>external side effects: os/exec</div><div>global mutable state: 1 package var(s) assigned in functions at internal/adapter/secure/scan.go:31</div></td>
+  </tr>
+  <tr>
+    <td class="num">16</td>
+    <td class="num bar-cell">80<span class="bar mid"><span style="width: 80%"></span></span></td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/analyze">internal/adapter/analyze</td>
+    <td class="num">4534</td>
+    <td><div>external side effects: os/exec</div><div>goroutines: 1 go statement(s), ordering is not deterministic at internal/adapter/analyze/deps.go:51</div></td>
+  </tr>
+  <tr>
+    <td class="num">17</td>
+    <td class="num bar-cell">80<span class="bar mid"><span style="width: 80%"></span></span></td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/capture">internal/adapter/capture</td>
+    <td class="num">81</td>
+    <td><div>external side effects: net, net/http</div><div>goroutines: 1 go statement(s), ordering is not deterministic at internal/adapter/capture/capture.go:52</div></td>
+  </tr>
+  <tr>
+    <td class="num">18</td>
+    <td class="num bar-cell">80<span class="bar mid"><span style="width: 80%"></span></span></td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/mailcap">internal/adapter/mailcap</td>
+    <td class="num">174</td>
+    <td><div>external side effects: net</div><div>goroutines: 2 go statement(s), ordering is not deterministic at internal/adapter/mailcap/mailcap.go:47, internal/adapter/mailcap/mailcap.go:58</div></td>
+  </tr>
+</table>
+<h3>Wave 2 · 6 packages, 3 ready · imports only earlier waves</h3>
+<table class="order">
+  <colgroup><col class="c-order"><col class="c-ready"><col class="c-pkg"><col class="c-lines"><col></colgroup>
+  <tr><th class="num"><span class="bi-en">Order</span><span class="bi-ko" lang="ko">순서</span></th><th><span class="bi-en">Readiness</span><span class="bi-ko" lang="ko">준비도</span></th><th><span class="bi-en">Package</span><span class="bi-ko" lang="ko">패키지</span></th><th class="num"><span class="bi-en">Lines</span><span class="bi-ko" lang="ko">라인</span></th><th><span class="bi-en">Risks</span><span class="bi-ko" lang="ko">위험</span></th></tr>
+  <tr>
+    <td class="num">19</td>
+    <td class="num bar-cell">100<span class="bar"><span style="width: 100%"></span></span></td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/settings">internal/adapter/settings</td>
+    <td class="num">109</td>
+    <td>none</td>
+  </tr>
+  <tr>
+    <td class="num">20</td>
+    <td class="num bar-cell">100<span class="bar"><span style="width: 100%"></span></span></td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/harness">internal/harness</td>
+    <td class="num">16</td>
+    <td>none</td>
+  </tr>
+  <tr>
+    <td class="num">21</td>
+    <td class="num bar-cell">90<span class="bar"><span style="width: 90%"></span></span></td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/frontdoor">internal/adapter/frontdoor</td>
+    <td class="num">162</td>
+    <td><div>external side effects: net/http</div></td>
+  </tr>
+  <tr>
+    <td class="num">22</td>
+    <td class="num bar-cell">80<span class="bar mid"><span style="width: 80%"></span></span></td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/frontdoorgen">internal/adapter/frontdoorgen</td>
+    <td class="num">1080</td>
+    <td><div>external side effects: net, net/http, os/exec</div><div>goroutines: 1 go statement(s), ordering is not deterministic at internal/adapter/frontdoorgen/check.go:171</div></td>
+  </tr>
+  <tr>
+    <td class="num">23</td>
+    <td class="num bar-cell">80<span class="bar mid"><span style="width: 80%"></span></span></td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/wiregen">internal/adapter/wiregen</td>
+    <td class="num">2327</td>
+    <td><div>external side effects: net, net/http, os/exec</div><div>wide API: more than 20 exported functions</div></td>
+  </tr>
+  <tr>
+    <td class="num">24</td>
+    <td class="num bar-cell">70<span class="bar mid"><span style="width: 70%"></span></span></td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/doctor">internal/adapter/doctor</td>
+    <td class="num">161</td>
+    <td><div>external side effects: net, os/exec</div><div>no tests of its own: record its behavior before porting</div></td>
+  </tr>
+</table>
+<h3>Wave 3 · 1 package, 0 ready · imports only earlier waves</h3>
+<table class="order">
+  <colgroup><col class="c-order"><col class="c-ready"><col class="c-pkg"><col class="c-lines"><col></colgroup>
+  <tr><th class="num"><span class="bi-en">Order</span><span class="bi-ko" lang="ko">순서</span></th><th><span class="bi-en">Readiness</span><span class="bi-ko" lang="ko">준비도</span></th><th><span class="bi-en">Package</span><span class="bi-ko" lang="ko">패키지</span></th><th class="num"><span class="bi-en">Lines</span><span class="bi-ko" lang="ko">라인</span></th><th><span class="bi-en">Risks</span><span class="bi-ko" lang="ko">위험</span></th></tr>
+  <tr>
+    <td class="num">25</td>
+    <td class="num bar-cell">80<span class="bar mid"><span style="width: 80%"></span></span></td>
+    <td class="path" title="github.com/go-anything/go-anything/cmd/go-anything">cmd/go-anything</td>
+    <td class="num">3659</td>
+    <td><div>external side effects: net/http, os/exec</div><div>goroutines: 1 go statement(s), ordering is not deterministic at cmd/go-anything/profile_live.go:82</div></td>
+  </tr>
+</table>
+<h2 id="risks"><span class="bi-en">Risks by location</span><span class="bi-ko" lang="ko">위치별 위험</span></h2>
+<ul class="kinds">
+  <li><span class="badge warn">global_mutable</span> 1: <span class="bi-en">Package variables changed at run time carry hidden state between calls, so results depend on call history.</span><span class="bi-ko" lang="ko">실행 중 바뀌는 패키지 변수는 호출 사이에 숨은 상태를 남기므로 결과가 호출 이력에 의존합니다.</span></li>
+  <li><span class="badge warn">goroutine</span> 7: <span class="bi-en">Goroutines run in an order the scheduler picks, so the port must keep the synchronization, not only the results.</span><span class="bi-ko" lang="ko">고루틴은 스케줄러가 고른 순서로 실행되므로, 포팅은 결과만이 아니라 동기화까지 유지해야 합니다.</span></li>
+</ul>
+<p class="note">Most serious kind first. Showing 8 of 8.</p>
+<table>
+  <tr><th><span class="bi-en">Kind</span><span class="bi-ko" lang="ko">종류</span></th><th><span class="bi-en">Where</span><span class="bi-ko" lang="ko">위치</span></th><th><span class="bi-en">Package</span><span class="bi-ko" lang="ko">패키지</span></th><th><span class="bi-en">Detail</span><span class="bi-ko" lang="ko">상세</span></th></tr>
+  <tr>
+    <td>global_mutable</td>
+    <td class="path">internal/adapter/secure/scan.go:31</td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/secure">internal/adapter/secure</td>
+    <td>var Version assigned in runSecure at cmd/go-anything/secure_cmd.go:19</td>
+  </tr>
+  <tr>
+    <td>goroutine</td>
+    <td class="path">cmd/go-anything/profile_live.go:82</td>
+    <td class="path" title="github.com/go-anything/go-anything/cmd/go-anything">cmd/go-anything</td>
+    <td>go statement in cmdProfileLive</td>
+  </tr>
+  <tr>
+    <td>goroutine</td>
+    <td class="path">internal/adapter/analyze/deps.go:51</td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/analyze">internal/adapter/analyze</td>
+    <td>go statement in parseFiles</td>
+  </tr>
+  <tr>
+    <td>goroutine</td>
+    <td class="path">internal/adapter/capture/capture.go:52</td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/capture">internal/adapter/capture</td>
+    <td>go statement in StartAt</td>
+  </tr>
+  <tr>
+    <td>goroutine</td>
+    <td class="path">internal/adapter/frontdoorgen/check.go:171</td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/frontdoorgen">internal/adapter/frontdoorgen</td>
+    <td>go statement in checkServer</td>
+  </tr>
+  <tr>
+    <td>goroutine</td>
+    <td class="path">internal/adapter/layout/layout.go:133</td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/layout">internal/adapter/layout</td>
+    <td>go statement in Plan</td>
+  </tr>
+  <tr>
+    <td>goroutine</td>
+    <td class="path">internal/adapter/mailcap/mailcap.go:47</td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/mailcap">internal/adapter/mailcap</td>
+    <td>go statement in Start</td>
+  </tr>
+  <tr>
+    <td>goroutine</td>
+    <td class="path">internal/adapter/mailcap/mailcap.go:58</td>
+    <td class="path" title="github.com/go-anything/go-anything/internal/adapter/mailcap">internal/adapter/mailcap</td>
+    <td>go statement in (*Receiver).serve</td>
+  </tr>
+</table>
+
+<h2 id="packages"><span class="bi-en">Packages, largest first</span><span class="bi-ko" lang="ko">패키지, 크기 순</span></h2>
+<table>
+  <tr><th><span class="bi-en">Package</span><span class="bi-ko" lang="ko">패키지</span></th><th class="num"><span class="bi-en">Files</span><span class="bi-ko" lang="ko">파일</span></th><th class="num"><span class="bi-en">Lines</span><span class="bi-ko" lang="ko">라인</span></th><th class="num"><span class="bi-en">Exported</span><span class="bi-ko" lang="ko">내보냄</span></th><th class="num"><span class="bi-en">Functions</span><span class="bi-ko" lang="ko">함수</span></th></tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/domain">internal/domain <span class="badge info">internal</span></td>
+    <td class="num">28</td>
+    <td class="num">4721</td>
+    <td class="num">79</td>
+    <td class="num">142</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/adapter/analyze">internal/adapter/analyze <span class="badge info">internal</span></td>
+    <td class="num">11</td>
+    <td class="num">4534</td>
+    <td class="num">15</td>
+    <td class="num">108</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/cmd/go-anything">cmd/go-anything</td>
+    <td class="num">11</td>
+    <td class="num">3659</td>
+    <td class="num">5</td>
+    <td class="num">99</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/usecase">internal/usecase <span class="badge info">internal</span></td>
+    <td class="num">28</td>
+    <td class="num">2794</td>
+    <td class="num">73</td>
+    <td class="num">105</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/adapter/wiregen">internal/adapter/wiregen <span class="badge info">internal</span></td>
+    <td class="num">10</td>
+    <td class="num">2327</td>
+    <td class="num">24</td>
+    <td class="num">66</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/adapter/shadowgen">internal/adapter/shadowgen <span class="badge info">internal</span></td>
+    <td class="num">5</td>
+    <td class="num">1139</td>
+    <td class="num">1</td>
+    <td class="num">23</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/adapter/frontdoorgen">internal/adapter/frontdoorgen <span class="badge info">internal</span></td>
+    <td class="num">4</td>
+    <td class="num">1080</td>
+    <td class="num">8</td>
+    <td class="num">20</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/adapter/layout">internal/adapter/layout <span class="badge info">internal</span></td>
+    <td class="num">4</td>
+    <td class="num">988</td>
+    <td class="num">6</td>
+    <td class="num">30</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/adapter/secure">internal/adapter/secure <span class="badge info">internal</span></td>
+    <td class="num">1</td>
+    <td class="num">867</td>
+    <td class="num">1</td>
+    <td class="num">30</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/adapter/setup">internal/adapter/setup <span class="badge info">internal</span></td>
+    <td class="num">2</td>
+    <td class="num">487</td>
+    <td class="num">2</td>
+    <td class="num">20</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/adapter/dbsnap">internal/adapter/dbsnap <span class="badge info">internal</span></td>
+    <td class="num">2</td>
+    <td class="num">386</td>
+    <td class="num">12</td>
+    <td class="num">20</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/adapter/mailcap">internal/adapter/mailcap <span class="badge info">internal</span></td>
+    <td class="num">1</td>
+    <td class="num">174</td>
+    <td class="num">3</td>
+    <td class="num">7</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/adapter/mcp">internal/adapter/mcp <span class="badge info">internal</span></td>
+    <td class="num">1</td>
+    <td class="num">168</td>
+    <td class="num">3</td>
+    <td class="num">8</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/adapter/app">internal/adapter/app <span class="badge info">internal</span></td>
+    <td class="num">1</td>
+    <td class="num">166</td>
+    <td class="num">1</td>
+    <td class="num">6</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/adapter/frontdoor">internal/adapter/frontdoor <span class="badge info">internal</span></td>
+    <td class="num">1</td>
+    <td class="num">162</td>
+    <td class="num">3</td>
+    <td class="num">6</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/adapter/doctor">internal/adapter/doctor <span class="badge info">internal</span></td>
+    <td class="num">1</td>
+    <td class="num">161</td>
+    <td class="num">1</td>
+    <td class="num">9</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/adapter/profile">internal/adapter/profile <span class="badge info">internal</span></td>
+    <td class="num">1</td>
+    <td class="num">149</td>
+    <td class="num">6</td>
+    <td class="num">8</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/adapter/gatecheck">internal/adapter/gatecheck <span class="badge info">internal</span></td>
+    <td class="num">1</td>
+    <td class="num">143</td>
+    <td class="num">1</td>
+    <td class="num">7</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/adapter/store">internal/adapter/store <span class="badge info">internal</span></td>
+    <td class="num">2</td>
+    <td class="num">124</td>
+    <td class="num">4</td>
+    <td class="num">5</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/adapter/routesfile">internal/adapter/routesfile <span class="badge info">internal</span></td>
+    <td class="num">1</td>
+    <td class="num">114</td>
+    <td class="num">3</td>
+    <td class="num">4</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/adapter/settings">internal/adapter/settings <span class="badge info">internal</span></td>
+    <td class="num">1</td>
+    <td class="num">109</td>
+    <td class="num">2</td>
+    <td class="num">4</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/adapter/cover">internal/adapter/cover <span class="badge info">internal</span></td>
+    <td class="num">1</td>
+    <td class="num">97</td>
+    <td class="num">5</td>
+    <td class="num">5</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/adapter/capture">internal/adapter/capture <span class="badge info">internal</span></td>
+    <td class="num">1</td>
+    <td class="num">81</td>
+    <td class="num">4</td>
+    <td class="num">5</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/adapter/subject">internal/adapter/subject <span class="badge info">internal</span></td>
+    <td class="num">1</td>
+    <td class="num">58</td>
+    <td class="num">1</td>
+    <td class="num">1</td>
+  </tr>
+  <tr>
+    <td class="path nowrap" title="github.com/go-anything/go-anything/internal/harness">internal/harness <span class="badge info">internal</span></td>
+    <td class="num">1</td>
+    <td class="num">16</td>
+    <td class="num">1</td>
+    <td class="num">1</td>
+  </tr>
+</table>
+<details>
+<summary><span class="bi-en">Exported functions nothing in the module reaches (9)</span><span class="bi-ko" lang="ko">모듈 안 어디서도 도달하지 않는 내보낸 함수 (9개)</span></summary>
+<p class="note">No static call and no use as a value inside the module, outside package main.
+They may be called by tests, by other modules, or only through reflection.</p>
+<ul class="paths">
+  <li title="github.com/go-anything/go-anything/internal/adapter/capture.Start">internal/adapter/capture.Start</li>
+  <li title="github.com/go-anything/go-anything/internal/domain.AnalysisBottomLine">internal/domain.AnalysisBottomLine</li>
+  <li title="github.com/go-anything/go-anything/internal/domain.SameInsertContent">internal/domain.SameInsertContent</li>
+  <li title="github.com/go-anything/go-anything/internal/usecase.AppRecord">internal/usecase.AppRecord</li>
+  <li title="github.com/go-anything/go-anything/internal/usecase.AppRecordWithEffects">internal/usecase.AppRecordWithEffects</li>
+  <li title="github.com/go-anything/go-anything/internal/usecase.AppReplayWithEffects">internal/usecase.AppReplayWithEffects</li>
+  <li title="github.com/go-anything/go-anything/internal/usecase.CompareAnswers">internal/usecase.CompareAnswers</li>
+  <li title="github.com/go-anything/go-anything/internal/usecase.JudgeProbe">internal/usecase.JudgeProbe</li>
+  <li title="github.com/go-anything/go-anything/internal/usecase.Verify">internal/usecase.Verify</li>
+</ul>
+</details>
+
+<details id="how">
+<summary><span class="bi-en">How to read this</span><span class="bi-ko" lang="ko">읽는 법</span></summary>
+<p><strong><span class="bi-en">Readiness</span><span class="bi-ko" lang="ko">준비도</span></strong> <span class="bi-en">starts at 100 and loses fixed points for each reason found in the package.</span><span class="bi-ko" lang="ko">100에서 시작하여 패키지에서 발견된 이유마다 정해진 점수를 깎습니다.</span> <span class="bi-en">Each reason counts once, however many places cause it. It is a heuristic to order the work, not a measure of effort.</span><span class="bi-ko" lang="ko">하나의 이유는 몇 군데서 나오든 한 번만 계산됩니다. 작업 순서를 정하는 휴리스틱이지 노력의 척도가 아닙니다.</span></p>
+<ul>
+  <li>unsafe or cgo: -25</li>
+  <li>no tests of its own: -20</li>
+  <li>external side effects (os/exec, net, net/http, net/rpc, database/sql, plugin): -10</li>
+  <li>goroutines: -10</li>
+  <li>wide API (more than 20 exported functions): -10</li>
+  <li>reflection: -5</li>
+  <li>global mutable state: -5</li>
+  <li>init functions: -5</li>
+</ul>
+<p><strong><span class="bi-en">Wave</span><span class="bi-ko" lang="ko">웨이브</span></strong> <span class="bi-en">is the depth in the import graph inside the module. Wave 0 imports no other package of the module. A package in wave N imports at least one package of wave N-1 and none of a later wave, so porting wave by wave always has its dependencies done.</span><span class="bi-ko" lang="ko">는 모듈 안 임포트 그래프에서의 깊이입니다. 웨이브 0은 모듈의 다른 패키지를 임포트하지 않습니다. 웨이브 N의 패키지는 최소한 웨이브 N-1의 패키지 하나를 임포트하고 더 늦은 웨이브는 임포트하지 않으므로, 웨이브별 포팅은 의존성이 항상 먼저 끝나 있습니다.</span></p>
+<p><strong><span class="bi-en">Dynamic calls.</span><span class="bi-ko" lang="ko">동적 호출.</span></strong> <span class="bi-en">Call edges come from a static walk of function bodies. Calls through an interface method or a function value cannot be resolved that way; they are counted as dynamic calls and are not edges. The share on the card is dynamic calls over static edges plus dynamic calls; edges count distinct caller and callee pairs while dynamic calls count call sites, so it is a rough indicator.</span><span class="bi-ko" lang="ko">호출 간선은 함수 본문을 정적으로 훑어 나옵니다. 인터페이스 메서드나 함수 값을 통한 호출은 그렇게 해결할 수 없어 동적 호출로 세이며 간선이 아닙니다. 카드의 비율은 동적 호출을 정적 간선과 동적 호출의 합으로 나눈 것으로, 간선은 서로 다른 호출자-피호출자 쌍을 세고 동적 호출은 호출 지점을 세므로 대략적인 지표입니다.</span></p>
+<p><strong><span class="bi-en">Tests are not walked.</span><span class="bi-ko" lang="ko">테스트는 훑지 않습니다.</span></strong> <span class="bi-en">Only non-test files are read, so calls made from tests do not count as callers, and a package&#39;s own _test.go files only decide the &#34;no tests of its own&#34; reason.</span><span class="bi-ko" lang="ko">테스트가 아닌 파일만 읽으므로, 테스트에서 하는 호출은 호출자로 세지 않고, 패키지 자신의 _test.go 파일은 &#34;자체 테스트 없음&#34; 이유만 결정합니다.</span></p>
+</details>
+
+<footer><span class="bi-en">Generated by go-anything analyze. Each run writes a new version; earlier versions are kept.</span><span class="bi-ko" lang="ko">go-anything analyze가 생성했습니다. 실행마다 새 버전을 남기며, 이전 버전은 보관됩니다.</span></footer>
+</body>
+</html>

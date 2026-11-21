@@ -181,8 +181,15 @@ go-anything secure -root .                # 필수 항목 실패 시 exit 1
 
 ## 보고서
 
-세 표면 모두 HTML. 검증 판정서, 분석 리포트(버전 간 델타 포함), RSI 라운드 페이지.
-값은 2048바이트에서 잘리고 무엇을 숨겼는지 밝히며, 토큰은 마스킹되고, 개인정보 주의 문구가 붙습니다.
+세 표면 모두 HTML. 값은 2048바이트에서 잘리고 무엇을 숨겼는지 밝히며, 토큰은 마스킹되고, 개인정보 주의 문구가 붙습니다.
+
+**이 저장소를 직접 대상으로 돌린 실물 예시** — [`docs/reports/`](./docs/reports)에서 브라우저로 열어보세요.
+
+| 산출물 | 명령 | 내용 |
+|---|---|---|
+| [`verification.html`](./docs/reports/verification.html) | `record` → `verify -report` | 설치된 v0.38.0 바이너리의 `commands` 출력을 녹화하고 소스 빌드가 같은지 판정. **PASS** |
+| [`analysis.html`](./docs/reports/analysis.html) | `analyze .` | 이 저장소 자기 분석. 패키지 25, 함수 739, 이식 웨이브와 위험 지점 |
+| [`security.html`](./docs/reports/security.html) | `secure -root .` | 보안기능 확인서 체크리스트 39항목. 필수 4건 리뷰 대상 발견을 숨기지 않은 판정 |
 
 ## ✅ 검증
 

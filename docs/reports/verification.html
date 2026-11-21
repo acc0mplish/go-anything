@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verification report: /root/go/bin/go-anything commands</title>
+<style>
+  :root { --fg:#1d1d1f; --muted:#57606a; --line:#d0d7de; --head:#f6f8fa; --ok:#1a7f37; --bad:#cf222e;
+          --warn:#9a6700; --info:#0969da; --okbg:#dafbe1; --badbg:#ffebe9; --warnbg:#fff8c5; --infobg:#ddf4ff; }
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 1080px; color: var(--fg); padding: 0 1rem; line-height: 1.45; }
+  h1 { font-size: 1.5rem; word-break: break-all; margin-bottom: .25rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid var(--line); padding-bottom: .25rem; }
+  .meta { color: var(--muted); font-size: .85rem; margin: 0 0 1rem; }
+  .meta code { font-size: .8rem; }
+  nav.toc { font-size: .85rem; margin: .5rem 0 1rem; }
+  nav.toc a { margin-right: .9rem; color: var(--info); text-decoration: none; }
+  .banner { border-radius: 8px; padding: .8rem 1rem; margin: .75rem 0 1rem; border: 1px solid var(--line); }
+  .banner.pass { background: var(--okbg); border-color: var(--ok); }
+  .banner.fail { background: var(--badbg); border-color: var(--bad); }
+  .banner.warn { background: var(--warnbg); border-color: var(--warn); }
+  .banner.info { background: var(--infobg); border-color: var(--info); }
+  .banner strong.verdict { font-size: 1.1rem; }
+  .banner p { margin: .35rem 0 0; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .6rem; margin: .75rem 0 1rem; }
+  .card { border: 1px solid var(--line); border-radius: 8px; padding: .55rem .75rem; }
+  .card .k { color: var(--muted); font-size: .75rem; text-transform: uppercase; letter-spacing: .03em; }
+  .card .v { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .card .s { color: var(--muted); font-size: .8rem; }
+  .card.bad .v { color: var(--bad); } .card.ok .v { color: var(--ok); } .card.warn .v { color: var(--warn); }
+  table { border-collapse: collapse; width: 100%; margin: .5rem 0 1.25rem; }
+  th, td { border: 1px solid var(--line); padding: .35rem .55rem; text-align: left; vertical-align: top; }
+  th { background: var(--head); font-size: .85rem; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .mono, td.path, td.val { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82rem; word-break: break-all; }
+  pre.val { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82rem; margin: 0; white-space: pre-wrap; word-break: break-all; }
+  mark.diff { background: #ffd8d3; color: inherit; border-bottom: 2px solid var(--bad); }
+  .ws { color: #8c959f; }
+  .badge { display: inline-block; font-size: .72rem; padding: .05rem .45rem; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+  .badge.ok { background: var(--okbg); color: var(--ok); border-color: var(--ok); }
+  .badge.bad { background: var(--badbg); color: var(--bad); border-color: var(--bad); }
+  .badge.warn { background: var(--warnbg); color: var(--warn); border-color: var(--warn); }
+  .badge.info { background: var(--infobg); color: var(--info); border-color: var(--info); }
+  .bar { background: #eaeef2; border-radius: 4px; height: .55rem; min-width: 80px; overflow: hidden; }
+  .bar > span { display: block; height: 100%; background: var(--ok); }
+  .bar.mid > span { background: var(--warn); } .bar.low > span { background: var(--bad); }
+  .note { color: var(--muted); font-size: .88rem; }
+   
+  .bi-en { display: inline; }
+  .bi-ko { display: block; color: var(--muted); font-size: .85em; line-height: 1.3; margin-top: .1rem; }
+  ol.actions li { margin: .25rem 0; }
+  details { margin: .5rem 0 1rem; } details > summary { cursor: pointer; color: var(--info); }
+  footer { color: #6e7781; font-size: .8rem; margin-top: 2.5rem; border-top: 1px solid var(--line); padding-top: .5rem; }
+  @media print { details { display: block; } details > summary { display: none; } nav.toc { display: none; } }
+
+  table.diffs { table-layout: fixed; }
+  table.diffs col.c-case { width: 12%; } table.diffs col.c-field { width: 14%; }
+  table.diffs col.c-input { width: 20%; } table.diffs col.c-val { width: 27%; }
+  table.diffs td.field { word-break: normal; overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+<h1>Verification report</h1>
+
+<span class="bi-en"></span><span class="bi-ko" lang="ko">검증 보고서</span>
+<p class="meta"><span class="mono">/root/go/bin/go-anything commands</span> · unit</p>
+<p class="meta">Rewrite <code>/tmp/ga-self/ga commands</code> · Recording <code>/tmp/rec.json</code> · Generated 2026-11-21T18:46:05Z · Compare exact · go-anything 0.38.0</p>
+
+<div class="banner pass">
+  <strong class="verdict pass">Verdict: <span class="bi-en">Verdict: PASS</span><span class="bi-ko" lang="ko">판정: 통과</span></strong> <span><span class="bi-en">All 1 recorded case(s) matched. The rewrite is acceptable for what was recorded.</span><span class="bi-ko" lang="ko">기록된 1개 케이스가 모두 일치했습니다. 이 재작성은 기록된 범위 안에서 사용할 수 있습니다.</span></span>
+  <p><span class="bi-en">Next steps:</span><span class="bi-ko" lang="ko">다음 단계:</span></p>
+  <ol class="actions"><li><span class="bi-en">Run</span><span class="bi-ko" lang="ko">실행</span> verify again with -src set to the original&#39;s source directory, so the report can confirm the recording is not stale.</li>
+  </ol>
+</div>
+
+<div class="cards">
+  <div class="card ok"><div class="k"><span class="bi-en">Matched</span><span class="bi-ko" lang="ko">일치</span></div><div class="v">1/1</div><div class="s">1 of 1 (100.0%)</div></div>
+  <div class="card ok"><div class="k"><span class="bi-en">Mismatching cases</span><span class="bi-ko" lang="ko">불일치 케이스</span></div><div class="v">0</div><div class="s">0 differing field(s)</div></div>
+  <div class="card warn"><div class="k"><span class="bi-en">Stale recording</span><span class="bi-ko" lang="ko">오래된 녹화</span></div><div class="v"><span class="bi-en">not checked</span><span class="bi-ko" lang="ko">확인 안 함</span></div><div class="s"><span class="bi-en">not checked (no source directory given)</span><span class="bi-ko" lang="ko">확인 안 함(소스 디렉터리를 지정하지 않음)</span></div></div>
+</div>
+
+<h2 id="matched"><span class="bi-en">Matched</span><span class="bi-ko" lang="ko">일치</span></h2>
+<details>
+<summary><span class="bi-en">1 matched cases</span><span class="bi-ko" lang="ko">일치한 케이스 1개</span></summary>
+<table>
+  <tr><th><span class="bi-en">Case</span><span class="bi-ko" lang="ko">케이스</span></th><th><span class="bi-en">Detail</span><span class="bi-ko" lang="ko">상세</span></th></tr>
+  <tr><td class="val">line-1</td><td>match</td></tr>
+</table>
+</details>
+
+<footer><span class="bi-en">Generated by go-anything. Values are shown as plain text, clipped at 2048 bytes, and may contain personal data. Share this report with care.</span><span class="bi-ko" lang="ko">go-anything가 생성했습니다. 값은 일반 텍스트로 표시되며 2048바이트에서 잘리고, 개인 데이터를 담을 수 있습니다. 이 보고서를 나눌 때 주의하세요.</span></footer>
+</body>
+</html>
