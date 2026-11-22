@@ -30,6 +30,25 @@ go build -o go-anything ./cmd/go-anything
 
 Release binaries for linux, darwin and windows come from `go-anything package`, which also generates the installation document.
 
+## Supported features
+
+| Feature | Status | What it does |
+|---|:---:|---|
+| `record` / `verify` | ✅ | CLI recording and rewrite judging (`-json-body`, `-float-tolerance`, `-normalize`) |
+| `app record` / `app replay` | ✅ | Whole-service recording and replay, `-repeat` instability detection, `-case` single replay |
+| `wire gen` | ✅ | Unit scaffold + `main.go` mount; `-agent` writes the first rewrite from recorded behavior |
+| `wire refine` (RSI loop) | ✅ | Probe, ask the original, record, agent fix, convergence verdict |
+| `wire verify` / `set` / `status` | ✅ | Per-unit verification, unit switching, defect policy query |
+| Live application probing | ✅ | HTTP convergence probes go through the assembled `main.go` (routing, middleware, auth); e2e tested |
+| CLI probe isolation | ✅ | One child process per probe with a timeout; `os.Exit` cannot kill the harness |
+| `secure` + `gate -security` | ✅ | 39-item confirmation checklist, all 29 official clauses referenced, opt-in gate |
+| `rbac` | ✅ | Structural authorization audit with 401/403/404 deny reasons |
+| `analyze` | ✅ | Port-order analysis for Go, Python, JS/TS, C and Java originals |
+| `shadow gen` / `frontdoor scaffold` / `profile -url` | ✅ | Drop-in shadow package, proxy entry point, live pprof |
+| HTML reports (bilingual, responsive) | ✅ | Verification, analysis delta, RSI rounds, security checklist (Korean-first) |
+| `pace` / `fresh` | ⏸ | Deferred with documented trigger conditions |
+| `pin_clock` runtime patching | ❌ | Deliberate non-goal; masking and `-repeat` instead |
+
 ## The three flows
 
 ### 1. Record, then verify a rewrite
@@ -52,6 +71,8 @@ go-anything wire refine ./svc orders /orders/ -cases app.json \
 ```
 
 Each round sends fresh probe inputs (including request-shape variants like `%31` and lowercase methods) to both sides. Every disagreement is recorded with the original's answer, the unit's test is regenerated, and the agent fixes the rewrite in a clean room: it sees only recorded behavior, never the original's source. Convergence requires two consecutive clean rounds on different seeds. Original crashes are separated into a defect list instead of being recorded as behavior.
+
+For HTTP units the probes go through the assembled application: the module is built, `main.go` is started with the unit switched to the rewrite, and probes are sent over the network, so routing, middleware and authentication are part of what convergence checks. The started process is owned and watched, so there is no port-precheck race.
 
 A round ledger lives in `.go-anything/checks/<unit>/` (JSON per round plus an HTML page), and states what was not checked, honestly.
 

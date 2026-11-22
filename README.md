@@ -69,19 +69,27 @@ flowchart LR
 
 ## 기능 투어
 
-| 명령 | 하는 일 |
-|---|---|
-| `record` / `verify` | CLI 원본 녹화, 재작성 판정. `-json-body` `-float-tolerance` `-normalize timestamps` |
-| `app record` / `app replay` | HTTP 서비스 전체 녹화와 재생. `-repeat`로 불안정 응답 자동 감지 |
-| `wire gen` | 유닛 스캐폴드 + `main.go` 마운트. `-agent`를 주면 녹화된 동작만 보고 첫 재작성 작성 |
-| `wire refine` | **RSI 루프.** 프로브 생성 → 원본 질의 → 기록 → 에이전트 수정 → 수렴 판정 |
-| `secure` | 보안기능 확인서 체크리스트 39항목. 필수 실패 시 exit 1, `-report-only` 옵션 |
-| `rbac` | 구조적 권한 심판. 토큰은 환경변수 이름으로만. CRITICAL 발견 시 exit 1 |
-| `analyze` | Go(go/types 콜그래프)·Python·JS/TS·C·Java 원본의 이식 순서 분석 |
-| `shadow gen` | 기존 Go 패키지 시그니처로 드롭인 섀도 패키지. 불일치 JSONL 로그 |
-| `frontdoor scaffold` | 표준 라이브러리 리버스 프록시 진입점. 유닛이 마운트되는 자리 |
-| `profile -url` | 실서비스 `/debug/pprof`를 케이스 재생과 병행해 샘플링 |
-| `fuzz` `bench` `map` `lift` `package` `doctor` `setup` `commands` | 차등 퍼징, 타이밍, 드리프트, 리프트 판정, 릴리스, 진단 |
+| 기능 | 지원 | 하는 일 |
+|---|:---:|---|
+| `record` / `verify` | ✅ | CLI 원본 녹화, 재작성 판정. `-json-body` `-float-tolerance` `-normalize timestamps` |
+| `app record` / `app replay` | ✅ | HTTP 서비스 전체 녹화와 재생. `-repeat`로 불안정 응답 자동 감지, `app replay -case` 단일 재생 |
+| `wire gen` | ✅ | 유닛 스캐폴드 + `main.go` 마운트. `-agent`를 주면 녹화된 동작만 보고 첫 재작성 작성 |
+| `wire refine` (RSI 루프) | ✅ | 프로브 생성 → 원본 질의 → 기록 → 에이전트 수정 → 수렴 판정 |
+| `wire verify` / `wire set` / `wire status` | ✅ | 단위 검증, 단위 스위치, 유닛별 결함 정책 조회 |
+| 라이브 애플리케이션 프로빙 | ✅ | HTTP 수렴 프로브가 `main.go` 전체(라우팅·미들웨어·인증)를 경유. 미들웨어 403도 잡힘 (e2e 검증) |
+| CLI 프로브 격리 | ✅ | 프로브마다 자식 프로세스 + 타임아웃. `os.Exit`도 하니스를 못 죽이고 행은 exit 124 |
+| `secure` | ✅ | 보안기능 확인서 체크리스트 39항목, 공식 조항 29개 ref 연결. 필수 실패 시 exit 1, `-report-only` 옵션 |
+| `gate -security` | ✅ | 보안 체크리스트의 옵트인 게이트 통합 |
+| `rbac` | ✅ | 구조적 권한 심판. 401/403/404 거부 사유 구분, 토큰은 환경변수 이름으로만, CRITICAL 시 exit 1 |
+| `analyze` | ✅ | Go(go/types 콜그래프)·Python·JS/TS·C·Java 원본의 이식 순서 분석 |
+| `shadow gen` | ✅ | 기존 Go 패키지 시그니처로 드롭인 섀도 패키지. 불일치 JSONL 로그 |
+| `frontdoor scaffold` | ✅ | 표준 라이브러리 리버스 프록시 진입점. 유닛이 마운트되는 자리 |
+| `profile -url` | ✅ | 실서비스 `/debug/pprof`를 케이스 재생과 병행해 샘플링 |
+| `fuzz` `bench` `map` `lift` `package` `doctor` `setup` `commands` | ✅ | 차등 퍼징, 타이밍, 드리프트, 리프트 판정, 릴리스, 진단 |
+| HTML 리포트 (이중언어·반응형) | ✅ | 검증 판정서, 분석 리포트(델타), RSI 라운드 페이지, 보안 확인서(한국어 우선) |
+| MCP 서버 | ✅ | 안전한 읽기·검증 도구만 노출. 사람 전용 명령은 제외 |
+| `pace` / `fresh` | ⏸ | 트리거 조건 문서화 후 보류 (`docs/STATUS.md` 참조) |
+| `pin_clock` (런타임 몽키패치) | ❌ | 의도적 미채택. 마스킹 + `-repeat` 불안정 감지로 대응 |
 
 전체 사용법은 `go-anything` 무인자 실행, MCP 노출 범위는 `go-anything commands`.
 
@@ -139,6 +147,9 @@ go-anything rbac -cases cases.json -principals principals.json \
 
 토큰은 환경변수 **이름**만 받고 절대 출력하지 않습니다. 판정은 응답 본문이 아니라
 allow/deny/other 결과로만 하며, 죽는 서버가 통과인 척하는 것을 허용하지 않습니다.
+거부는 401(미인증)·403(권한 없음)·404(숨김) 사유로 구분해 보고하고, 정책이 존재하지 않는
+케이스를 가리키면 시작 전에 실패합니다. 재작성이 정책과 일치해도 원본과 다르면 그 차이를
+숨기지 않고 원본 결함으로 기록합니다.
 실제 Rust 서비스에서 익명 사용자가 전체 사용자 목록과 이메일을 읽는 결함을 이 명령으로 찾은 사례가 있습니다.
 
 ## 설치
@@ -171,6 +182,10 @@ go-anything wire refine ./svc orders /orders/ -cases app.json \
     -original-url http://127.0.0.1:8080 \
     -agent "claude -p --permission-mode acceptEdits" -rounds 4
 ```
+
+HTTP 유닛의 프로브는 조립된 애플리케이션 전체를 경유합니다. 모듈을 빌드해 `main.go`를 띄우고
+네트워크로 보내므로 라우팅, 미들웨어, 인증까지 수렴 판정에 들어옵니다. 시작한 프로세스의
+소유권으로 검증하므로 포트 선점 경합이 없습니다.
 
 라운드 장부는 `.go-anything/checks/<unit>/`(JSON + HTML). 확인하지 못한 입력 종류를
 "확인 안 됨"으로 그대로 적습니다. 녹색 판정은 결코 과장하지 않습니다.
