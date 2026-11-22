@@ -102,6 +102,45 @@ func StartApp(bin string, env []string, addr string) (func(), error) {
 	return func() {}, fmt.Errorf("wire verify: the program did not listen on %s within 15s; output:\n%s", addr, logBuf.String())
 }
 
+// StartAppOwned starts the built program like StartApp, and also returns a channel that is closed as soon as the
+// program exits. A check that sends requests during its run must treat an exit as a failure: after the program
+// has exited, any listener on the address belongs to someone else. The caller stops the program with the returned
+// function.
+func StartAppOwned(bin string, env []string, addr string) (func(), <-chan struct{}, error) {
+	cmd := exec.Command(bin)
+	cmd.Env = append(os.Environ(), env...)
+	var logBuf bytes.Buffer
+	cmd.Stdout = &logBuf
+	cmd.Stderr = &logBuf
+	if err := cmd.Start(); err != nil {
+		return func() {}, nil, fmt.Errorf("wire verify: start program: %w", err)
+	}
+	exited := make(chan struct{})
+	go func() {
+		cmd.Wait()
+		close(exited)
+	}()
+	stop := func() {
+		cmd.Process.Kill()
+		<-exited
+	}
+	deadline := time.Now().Add(15 * time.Second)
+	for time.Now().Before(deadline) {
+		select {
+		case <-exited:
+			return func() {}, nil, fmt.Errorf("wire verify: the program exited before it listened on %s; output:\n%s", addr, logBuf.String())
+		default:
+		}
+		if conn, err := net.DialTimeout("tcp", addr, 200*time.Millisecond); err == nil {
+			conn.Close()
+			return stop, exited, nil
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	stop()
+	return func() {}, nil, fmt.Errorf("wire verify: the program did not listen on %s within 15s; output:\n%s", addr, logBuf.String())
+}
+
 // unitEnv is the environment that sends one unit to its rewrite and the rest to the original.
 func unitEnv(unit string, originalCLI, originalURL string) []string {
 	env := []string{"GA_UNIT_" + strings.ToUpper(unit) + "=rewrite"}
