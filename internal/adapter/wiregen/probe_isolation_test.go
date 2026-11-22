@@ -106,3 +106,44 @@ func TestAskOriginalSendsBodyAndHeaders(t *testing.T) {
 		t.Fatalf("the answer must come back: %+v", got)
 	}
 }
+
+// fakeExitHarness answers with the three shapes issue #19 named: a clean exit with no output, a
+// nonzero exit after writing output, and a clean exit whose output is not the answer JSON.
+const fakeExitHarness = `#!/usr/bin/env python3
+import json, sys
+probes = json.load(sys.stdin)
+a = (probes[0].get("argv") or [""])[-1]
+if a == "clean0":
+    sys.exit(0)
+if a == "half5":
+    sys.stdout.write("partial answer")
+    sys.stderr.write("then it died")
+    sys.exit(5)
+sys.stdout.write("not json at all")
+`
+
+func TestRunProbeCLIRecordsEveryExitShape(t *testing.T) {
+	bin := filepath.Join(t.TempDir(), "exit-harness.py")
+	if err := os.WriteFile(bin, []byte(fakeExitHarness), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		arg    string
+		code   int
+		stdout string
+		stderr string
+	}{
+		{"clean0", 0, "", ""},
+		{"half5", 5, "partial answer", "then it died"},
+		{"raw", 0, "not json at all", ""},
+	} {
+		got, err := RunProbe(bin, "cli", []domain.AppCase{{Kind: "cli", Argv: []string{"orders", tc.arg}}})
+		if err != nil {
+			t.Fatalf("%s: the exit shape is the probe's answer, not a run failure: %v", tc.arg, err)
+		}
+		a := got[0]
+		if a.ExitCode != tc.code || a.Stdout != tc.stdout || a.Stderr != tc.stderr {
+			t.Fatalf("%s: want exit %d stdout %q stderr %q, got %+v", tc.arg, tc.code, tc.stdout, tc.stderr, a)
+		}
+	}
+}

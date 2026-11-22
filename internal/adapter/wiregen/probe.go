@@ -241,15 +241,18 @@ func runCLIProbes(bin string, probes []domain.AppCase) ([]domain.AppCase, error)
 		if runErr != nil {
 			// The unit exited the child (for example through os.Exit) before it answered. That exit is the unit's
 			// answer for this probe, so it is recorded as the exit code rather than failing the whole run.
-			if ee, ok := runErr.(*exec.ExitError); ok && stdout.Len() == 0 {
-				out[i] = withProbe(p, domain.AppCase{ExitCode: ee.ExitCode(), Stderr: stderr.String()})
+			if ee, ok := runErr.(*exec.ExitError); ok {
+				out[i] = withProbe(p, domain.AppCase{ExitCode: ee.ExitCode(), Stdout: stdout.String(), Stderr: stderr.String()})
 				continue
 			}
 			return nil, fmt.Errorf("wire: probe program failed: %w: %s", runErr, strings.TrimSpace(stderr.String()))
 		}
 		ans, err := decodeAnswers("cli", []domain.AppCase{p}, stdout.Bytes())
 		if err != nil {
-			return nil, err
+			// The unit wrote to the harness's stdout, so the answer JSON is not clean. Record the raw output as the
+			// answer with a zero exit code instead of aborting the whole run (issue #19).
+			out[i] = withProbe(p, domain.AppCase{ExitCode: 0, Stdout: stdout.String(), Stderr: stderr.String()})
+			continue
 		}
 		out[i] = ans[0]
 	}
