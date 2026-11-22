@@ -87,10 +87,6 @@ func Refine(opts RefineOptions) (bool, error) {
 	// page rebuilds the RSI loop HTML page from the files on disk. It never fails the run.
 	page := func() { writeRefinePage(opts.Root, opts.Unit, opts.CasesPath+".defects.json", logf) }
 	for round := 1; round <= max(opts.Rounds, 1); round++ {
-		bin, cleanup, err := BuildProbe(opts.Root, opts.Unit, kind, module)
-		if err != nil {
-			return false, err
-		}
 		values := domain.ProbeValues(opts.Seed+uint64(round), opts.Probes)
 		probes := usecase.ProbeCases(kind, opts.Unit, opts.Prefix, values)
 		shapes := 0
@@ -99,8 +95,7 @@ func Refine(opts RefineOptions) (bool, error) {
 			extra := usecase.RequestShapeProbes(opts.Prefix, values, usecase.ShapeValuesPerRound)
 			probes, shapes = append(probes, extra...), len(extra)
 		}
-		got, err := RunProbe(bin, kind, probes)
-		cleanup()
+		got, err := runProbes(opts, kind, module, probes)
 		if err != nil {
 			return false, err
 		}
@@ -368,12 +363,7 @@ func crossCheck(opts RefineOptions, kind, module string, defects *usecase.Defect
 			valueOf = append(valueOf, v)
 		}
 	}
-	bin, cleanup, err := BuildProbe(opts.Root, opts.Unit, kind, module)
-	if err != nil {
-		return nil, 0, err
-	}
-	got, err := RunProbe(bin, kind, probes)
-	cleanup()
+	got, err := runProbes(opts, kind, module, probes)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -413,4 +403,19 @@ func describeProbe(p domain.AppCase) string {
 		return fmt.Sprintf("args=%q", p.Argv)
 	}
 	return p.Method + " " + p.Path
+}
+
+// runProbes sends one round's probes to the rewrite. A command-line unit runs the throwaway harness
+// binary; an HTTP unit is probed through the assembled application (RunHTTPProbesLive), so main.go's
+// routing, middleware and authentication are part of what convergence checks.
+func runProbes(opts RefineOptions, kind, module string, probes []domain.AppCase) ([]domain.AppCase, error) {
+	if kind == "http" {
+		return RunHTTPProbesLive(opts.Root, opts.Unit, opts.OriginalURL, probes)
+	}
+	bin, cleanup, err := BuildProbe(opts.Root, opts.Unit, kind, module)
+	if err != nil {
+		return nil, err
+	}
+	defer cleanup()
+	return RunProbe(bin, kind, probes)
 }
