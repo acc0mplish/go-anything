@@ -185,8 +185,9 @@ func probeInput(kind string, probes []domain.AppCase) ([]byte, error) {
 	return json.Marshal(list)
 }
 
-// probeTimeout bounds one probe. A unit that hangs or never returns is reported as an error, not waited on.
-const probeTimeout = 10 * time.Second
+// probeTimeout bounds one probe. A unit that hangs or never returns is reported as an error, not waited
+// on. It is a var so tests can shorten it instead of waiting a real ten seconds.
+var probeTimeout = 10 * time.Second
 
 // RunProbe runs the probe program on every probe and returns the rewrite's answers, in order.
 // CLI probes run each probe in its own child process with a timeout, so a unit that calls os.Exit ends only
