@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/go-anything/go-anything/internal/domain"
+	"github.com/go-anything/go-anything/internal/usecase"
 )
 
 // invoiceServer answers GET /invoices/1, which belongs to tenant acme. Tokens identify the caller.
@@ -226,5 +227,28 @@ func TestWireRefineRejectsRBACOnCommandLineUnitBeforeReadingFiles(t *testing.T) 
 		"-rbac-principals", "no-such-principals.json", "-rbac-policy", "no-such-policy.json"}, &out)
 	if err == nil || !strings.Contains(err.Error(), "HTTP units only") {
 		t.Fatalf("wire refine must refuse the check on a command-line unit with a clear error, before reading files: %v", err)
+	}
+}
+
+// TestPrintCellsNamesTheDenyReason pins the CLI wiring: the matrix table shows which refusal a deny
+// was, so an operator reads 403 (forbidden) differently from 404 (not_found) without opening the JSON.
+func TestPrintCellsNamesTheDenyReason(t *testing.T) {
+	m := usecase.Matrix{
+		usecase.MatrixKey("hidden", "alice"): {Outcome: domain.OutcomeDeny, Status: 404, Reason: domain.DenyNotFound},
+		usecase.MatrixKey("list", "anon"):    {Outcome: domain.OutcomeDeny, Status: 401, Reason: domain.DenyUnauthenticated},
+		usecase.MatrixKey("list", "alice"):   {Outcome: domain.OutcomeAllow, Status: 200},
+	}
+	cases := []domain.AppCase{{Name: "list", Kind: "http"}, {Name: "hidden", Kind: "http"}}
+	principals := []domain.Principal{{Name: "anon"}, {Name: "alice"}}
+	var b bytes.Buffer
+	printCells(&b, "rewrite", m, cases, principals)
+	out := b.String()
+	for _, want := range []string{"deny (not_found)", "deny (unauthenticated)", "allow"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("the table must show %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "allow (") {
+		t.Fatalf("an allow has no refusal reason:\n%s", out)
 	}
 }

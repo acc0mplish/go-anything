@@ -125,7 +125,11 @@ func printCells(w io.Writer, side string, m usecase.Matrix, cases []domain.AppCa
 				fmt.Fprintf(w, "  %-8s %-24s %-16s (no answer)\n", side, c.Name, p.Name)
 				continue
 			}
-			fmt.Fprintf(w, "  %-8s %-24s %-16s status %-4d %s\n", side, c.Name, p.Name, cell.Status, cell.Outcome)
+			reason := ""
+			if cell.Outcome == domain.OutcomeDeny && cell.Reason != "" {
+				reason = " (" + string(cell.Reason) + ")"
+			}
+			fmt.Fprintf(w, "  %-8s %-24s %-16s status %-4d %s%s\n", side, c.Name, p.Name, cell.Status, cell.Outcome, reason)
 		}
 	}
 }

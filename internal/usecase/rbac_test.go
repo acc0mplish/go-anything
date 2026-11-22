@@ -225,3 +225,41 @@ func TestRBACBriefNamesFailingRequestsWithoutTokens(t *testing.T) {
 		t.Fatalf("the brief must give the concrete failing request and principal:\n%s", text)
 	}
 }
+
+// TestRunMatrixRecordsTheDenyReason pins the wiring: every cell carries which refusal its deny was,
+// so reports can tell an unauthenticated 401 from a forbidden 403 or a hidden 404 without changing
+// the allow/deny decision.
+func TestRunMatrixRecordsTheDenyReason(t *testing.T) {
+	probe := func(c domain.AppCase, p domain.Principal) (int, error) {
+		switch {
+		case c.Name == "pub" && p.Name == "anon":
+			return 200, nil
+		case c.Name == "hidden":
+			return 404, nil
+		case p.Name == "anon":
+			return 401, nil
+		default:
+			return 403, nil
+		}
+	}
+	cases := []domain.AppCase{{Name: "pub", Kind: "http"}, {Name: "hidden", Kind: "http"}}
+	principals := []domain.Principal{{Name: "anon"}, {Name: "alice"}}
+	m, err := RunMatrix(cases, principals, probe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		caseName, principal string
+		outcome             domain.Outcome
+		reason              domain.DenyReason
+	}{
+		{"pub", "anon", domain.OutcomeAllow, domain.DenyNone},
+		{"hidden", "alice", domain.OutcomeDeny, domain.DenyNotFound},
+		{"pub", "alice", domain.OutcomeDeny, domain.DenyForbidden},
+	} {
+		cell := m[MatrixKey(tc.caseName, tc.principal)]
+		if cell.Outcome != tc.outcome || cell.Reason != tc.reason {
+			t.Fatalf("%s/%s: want %s/%q, got %s/%q", tc.caseName, tc.principal, tc.outcome, tc.reason, cell.Outcome, cell.Reason)
+		}
+	}
+}

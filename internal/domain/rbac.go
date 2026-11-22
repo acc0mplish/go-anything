@@ -22,6 +22,23 @@ const (
 	OutcomeOther Outcome = "other"
 )
 
+// DenyReason says which kind of refusal a deny outcome was. The allow/deny decision does not depend on it;
+// it keeps the three refusals apart in reports, so a 401 (no valid credential) is not read as a 403 (a valid
+// credential without permission) or a 404 (the resource is hidden from this caller).
+type DenyReason string
+
+const (
+	// DenyNone is the reason for an outcome that is not a denial.
+	DenyNone DenyReason = ""
+	// DenyUnauthenticated is an HTTP 401: the caller sent no valid credential.
+	DenyUnauthenticated DenyReason = "unauthenticated"
+	// DenyForbidden is an HTTP 403: the caller is known but may not use the case.
+	DenyForbidden DenyReason = "forbidden"
+	// DenyNotFound is an HTTP 404: the resource is hidden from this caller, often on purpose, so that
+	// another tenant's resource does not reveal that it exists.
+	DenyNotFound DenyReason = "not_found"
+)
+
 // ClassifyStatus maps an HTTP status to an authorization outcome. 2xx is allowed. 401, 403 and 404 are
 // denials: a resource in another tenant is usually answered 404 so its existence is not revealed.
 // A 5xx is Other, because a crash while checking permissions is a defect, not a denial.
@@ -33,6 +50,20 @@ func ClassifyStatus(status int) Outcome {
 		return OutcomeDeny
 	default:
 		return OutcomeOther
+	}
+}
+
+// DenyReasonOf names the refusal behind a status. It returns DenyNone for any status that is not a denial.
+func DenyReasonOf(status int) DenyReason {
+	switch status {
+	case 401:
+		return DenyUnauthenticated
+	case 403:
+		return DenyForbidden
+	case 404:
+		return DenyNotFound
+	default:
+		return DenyNone
 	}
 }
 
