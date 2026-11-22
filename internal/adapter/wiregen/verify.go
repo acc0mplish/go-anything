@@ -89,7 +89,9 @@ func StartApp(bin string, env []string, addr string) (func(), error) {
 // someone else.
 func StartAppOwned(bin string, env []string, addr string) (func(), <-chan struct{}, error) {
 	cmd := exec.Command(bin)
-	cmd.Env = append(os.Environ(), env...)
+	// Only an allowlisted part of the parent environment reaches the program, plus the unit's own entries.
+	// Secrets such as tokens or cloud credentials in the parent must not leak into it (issue #20).
+	cmd.Env = append(allowedParentEnv(), env...)
 	var logBuf bytes.Buffer
 	cmd.Stdout = &logBuf
 	cmd.Stderr = &logBuf
@@ -122,6 +124,18 @@ func StartAppOwned(bin string, env []string, addr string) (func(), <-chan struct
 	}
 	stop()
 	return func() {}, nil, fmt.Errorf("wire verify: the program did not listen on %s within 15s; output:\n%s", addr, logBuf.String())
+}
+
+// allowedParentEnv returns only the parent variables the program needs to run: a path, a home and a temp directory.
+func allowedParentEnv() []string {
+	keep := map[string]bool{"PATH": true, "HOME": true, "TMPDIR": true, "TZ": true, "LANG": true}
+	var out []string
+	for _, kv := range os.Environ() {
+		if name, _, ok := strings.Cut(kv, "="); ok && keep[name] {
+			out = append(out, kv)
+		}
+	}
+	return out
 }
 
 // unitEnv is the environment that sends one unit to its rewrite and the rest to the original.
