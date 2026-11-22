@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/go-anything/go-anything/internal/domain"
+	"net"
 )
 
 // liveModule writes a module whose main.go mounts the unit behind middleware that rejects any path
@@ -93,5 +94,31 @@ func TestRunHTTPProbesLiveFailsWhenTheProgramCannotStart(t *testing.T) {
 	os.WriteFile(filepath.Join(root, "main.go"), []byte("package main\n\nfunc main() {}\n"), 0o644)
 	if _, err := RunHTTPProbesLive(root, "orders", "", []domain.AppCase{{Kind: "http", Method: "GET", Path: "/x"}}); err == nil {
 		t.Fatal("a program that never listens must fail the run, not pass it")
+	}
+}
+
+// TestRunHTTPProbesLiveRefusesAForeignListener pins the ownership rule (issue #17): when another
+// process already accepts connections on the address, the run must fail instead of letting that
+// process answer the probes in the rewrite's name.
+func TestRunHTTPProbesLiveRefusesAForeignListener(t *testing.T) {
+	root := liveModule(t)
+	ln, err := net.Listen("tcp", "127.0.0.1:18671")
+	if err != nil {
+		t.Skipf("address busy: %v", err)
+	}
+	defer ln.Close()
+	go func() {
+		for {
+			c, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			c.Close()
+		}
+	}()
+	if _, err := RunHTTPProbesLive(root, "orders", "", []domain.AppCase{{Kind: "http", Method: "GET", Path: "/orders/1"}}); err == nil {
+		t.Fatal("a foreign listener on the address must fail the run")
+	} else if !strings.Contains(err.Error(), "another process owns it") {
+		t.Fatalf("the failure must say who owns the address: %v", err)
 	}
 }
