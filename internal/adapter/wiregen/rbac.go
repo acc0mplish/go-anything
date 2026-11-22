@@ -2,7 +2,6 @@ package wiregen
 
 import (
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -83,14 +82,11 @@ func CheckRBAC(root, unit string, cases []domain.AppCase, rb RBACOptions, origin
 	if err != nil {
 		return RBACReport{}, err
 	}
-	// StartApp succeeds as soon as anything accepts connections on the address. A process already holding the
-	// address would be checked instead of the rewrite, so the address must be free first.
-	ln, err := net.Listen("tcp", addr)
-	if err != nil {
-		return RBACReport{}, fmt.Errorf("rbac: address %s is in use, so the rewrite cannot be checked on it: %w", addr, err)
-	}
-	ln.Close()
-	stop, err := StartApp(bin, UnitEnv(unit, "", originalURL), addr)
+	// The address used to be probed for a free port, closed, and only then used to start the program. Another
+	// process could take the port in that window, and a bare "anything accepts" check would then pass for the
+	// rewrite. StartAppOwned starts the program and reports if it exits, so the probes are checked against the
+	// process that was started, and the check fails if that process is gone.
+	stop, exited, err := StartAppOwned(bin, UnitEnv(unit, "", originalURL), addr)
 	if err != nil {
 		return RBACReport{}, err
 	}
@@ -98,6 +94,11 @@ func CheckRBAC(root, unit string, cases []domain.AppCase, rb RBACOptions, origin
 	rewriteM, err := usecase.RunMatrix(cases, rb.Principals, ProbeWith(RBACRequest, "http://"+addr))
 	if err != nil {
 		return RBACReport{}, err
+	}
+	select {
+	case <-exited:
+		return RBACReport{}, fmt.Errorf("rbac: the program exited while it was being checked, so its answers do not come from the rewrite")
+	default:
 	}
 	originalM, err := usecase.RunMatrix(cases, rb.Principals, ProbeWith(RBACRequest, originalURL))
 	if err != nil {
