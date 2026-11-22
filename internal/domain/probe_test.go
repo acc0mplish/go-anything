@@ -145,3 +145,71 @@ func TestUnicodeLeadingZeroIsLeadingZero(t *testing.T) {
 		}
 	}
 }
+
+// TestProbeValuesSeedMattersAtSmallCounts pins the fix for the small-<n> case: with the boundary
+// list capped, the seeded fuzz values take real slots, so two seeds produce different probes while
+// one seed stays deterministic.
+func TestProbeValuesSeedMattersAtSmallCounts(t *testing.T) {
+	a := ProbeValues(1, 8)
+	b := ProbeValues(2, 8)
+	if same := countSame(a, b); same == len(a) {
+		t.Fatalf("seeds 1 and 2 must differ at n=8, got identical %v", a)
+	}
+	if c := ProbeValues(1, 8); !equalStrings(a, c) {
+		t.Fatalf("the same seed must be deterministic: %v vs %v", a, c)
+	}
+}
+
+// TestProbeValuesSmallCountsKeepTheSpecialForms guards the selection: the evenly spaced picks must
+// keep the late special forms reachable (007 sits at index 12 of 25) and always keep the empty
+// string, while a count at or above the list length still tries every boundary.
+func TestProbeValuesSmallCountsKeepTheSpecialForms(t *testing.T) {
+	for _, tc := range []struct {
+		n    int
+		want []string
+	}{{16, []string{"", "007"}}, {20, []string{"", "007"}}, {8, []string{""}}} {
+		got := ProbeValues(1, tc.n)
+		for _, w := range tc.want {
+			if !containsStr(got, w) {
+				t.Fatalf("n=%d must keep probing %q, got %v", tc.n, w, got)
+			}
+		}
+	}
+	all := ProbeValues(1, len(probeBoundaries)+5)
+	for _, v := range probeBoundaries {
+		if !containsStr(all, v) {
+			t.Fatalf("n above the list length must try every boundary, missing %q", v)
+		}
+	}
+}
+
+func countSame(a, b []string) int {
+	n := 0
+	for i := range a {
+		if i < len(b) && a[i] == b[i] {
+			n++
+		}
+	}
+	return n
+}
+
+func equalStrings(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func containsStr(s []string, v string) bool {
+	for _, x := range s {
+		if x == v {
+			return true
+		}
+	}
+	return false
+}

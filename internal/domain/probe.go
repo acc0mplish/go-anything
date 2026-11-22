@@ -12,7 +12,10 @@ var probeBoundaries = []string{"", "0", "1", "2", "50", "99", "100", "101", "499
 //
 // When n is small enough that the boundary list could fill every slot (n <= len(probeBoundaries)),
 // the boundary pass is capped at max(1, n/2) so the seeded values get the remaining slots and the
-// seed still changes the output.
+// seed still changes the output. The kept boundaries are evenly spaced over the whole list, not its
+// head: the special forms late in the list (a signed value, a huge number, a non-ASCII digit) are
+// the probes most likely to split the original from the rewrite, and cutting the list at its front
+// would drop exactly those.
 func ProbeValues(seed uint64, n int) []string {
 	seen := map[string]bool{}
 	var out []string
@@ -26,11 +29,14 @@ func ProbeValues(seed uint64, n int) []string {
 	if n <= len(probeBoundaries) {
 		boundaryCap = max(1, n/2)
 	}
-	for _, v := range probeBoundaries {
-		if len(out) >= boundaryCap {
-			break
+	if boundaryCap >= len(probeBoundaries) {
+		for _, v := range probeBoundaries {
+			add(v)
 		}
-		add(v)
+	} else {
+		for i := 0; i < boundaryCap; i++ {
+			add(probeBoundaries[i*len(probeBoundaries)/boundaryCap])
+		}
 	}
 	for _, v := range FuzzInputs(seed, n*3) {
 		add(v)
