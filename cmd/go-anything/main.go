@@ -40,7 +40,7 @@ import (
 )
 
 // version is a var, not a const, so a release build can set it with -ldflags "-X main.version=v1.2.3".
-var version = "0.39.0"
+var version = "0.40.0"
 
 const usage = `go-anything: record an original program, verify a rewrite against it, and analyze Go source.
 

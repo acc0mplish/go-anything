@@ -39,8 +39,9 @@ Release binaries for linux, darwin and windows come from `go-anything package`, 
 | `wire gen` | ✅ | Unit scaffold + `main.go` mount; `-agent` writes the first rewrite from recorded behavior |
 | `wire refine` (RSI loop) | ✅ | Probe, ask the original, record, agent fix, convergence verdict |
 | `wire verify` / `set` / `status` | ✅ | Per-unit verification, unit switching, defect policy query |
-| Live application probing | ✅ | HTTP convergence probes go through the assembled `main.go` (routing, middleware, auth); e2e tested |
-| CLI probe isolation | ✅ | One child process per probe with a timeout; `os.Exit` cannot kill the harness |
+| Live application probing | ✅ | Through the assembled `main.go`; process ownership verified, foreign listeners refused, one request builder for both sides |
+| CLI probe isolation | ✅ | One child process per probe with a timeout; `os.Exit` cannot kill the harness; every exit shape becomes that probe's answer |
+| Child environment allowlist | ✅ | The agent-generated rewrite sees only `GA_*` and basics, never parent tokens; cleanup kills the process group |
 | `secure` + `gate -security` | ✅ | 39-item confirmation checklist, all 29 official clauses referenced, opt-in gate |
 | `rbac` | ✅ | Structural authorization audit with 401/403/404 deny reasons |
 | `analyze` | ✅ | Port-order analysis for Go, Python, JS/TS, C and Java originals |
