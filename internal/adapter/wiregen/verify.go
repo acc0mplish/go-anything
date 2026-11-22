@@ -88,6 +88,12 @@ func StartApp(bin string, env []string, addr string) (func(), error) {
 // run whose program exits is a failure: after the exit, any listener on the address belongs to
 // someone else.
 func StartAppOwned(bin string, env []string, addr string) (func(), <-chan struct{}, error) {
+	// A listener that already answers on addr belongs to someone else. Refuse to start rather than let
+	// it answer the probes in the name of the program (issue #17).
+	if conn, err := net.DialTimeout("tcp", addr, 200*time.Millisecond); err == nil {
+		conn.Close()
+		return func() {}, nil, fmt.Errorf("wire verify: %s already accepts connections before the program starts; another process owns it", addr)
+	}
 	cmd := exec.Command(bin)
 	cmd.Env = append(os.Environ(), env...)
 	var logBuf bytes.Buffer
