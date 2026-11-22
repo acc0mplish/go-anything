@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 	"text/template"
@@ -119,9 +120,16 @@ func run(p probe) (a answer) {
 }
 `
 
+// validUnitName is the only shape a unit name may take.
+var validUnitName = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,63}$`)
+
 // BuildProbe writes the probe program for a unit, builds it, and returns the binary and a cleanup
 // function. The program lives under the unit's folder only while it is built, and is removed after.
 func BuildProbe(root, unit, kind, module string) (string, func(), error) {
+	// The unit name becomes a directory name and an import path, so only a plain name is allowed (issue #20).
+	if !validUnitName.MatchString(unit) {
+		return "", func() {}, fmt.Errorf("wire: unit name %q is not allowed: use lowercase letters, digits, and hyphens or underscores", unit)
+	}
 	tpl := probeHarnessHTTP
 	if kind == "cli" {
 		tpl = probeHarnessCLI
