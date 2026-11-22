@@ -9,6 +9,10 @@ var probeBoundaries = []string{"", "0", "1", "2", "50", "99", "100", "101", "499
 
 // ProbeValues returns up to n deterministic values to try: the boundary values first, then values
 // generated from seed. Values never hold newlines or NUL, so they can also be command-line arguments.
+//
+// When n is small enough that the boundary list could fill every slot (n <= len(probeBoundaries)),
+// the boundary pass is capped at max(1, n/2) so the seeded values get the remaining slots and the
+// seed still changes the output.
 func ProbeValues(seed uint64, n int) []string {
 	seen := map[string]bool{}
 	var out []string
@@ -18,7 +22,14 @@ func ProbeValues(seed uint64, n int) []string {
 			out = append(out, v)
 		}
 	}
+	boundaryCap := n
+	if n <= len(probeBoundaries) {
+		boundaryCap = max(1, n/2)
+	}
 	for _, v := range probeBoundaries {
+		if len(out) >= boundaryCap {
+			break
+		}
 		add(v)
 	}
 	for _, v := range FuzzInputs(seed, n*3) {
