@@ -2,7 +2,6 @@ package wiregen
 
 import (
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
 
@@ -31,14 +30,9 @@ func RunHTTPProbesLive(root, unit, originalURL string, probes []domain.AppCase) 
 	if err != nil {
 		return nil, err
 	}
-	// StartApp succeeds as soon as anything accepts connections on addr. A process already holding the
-	// address would be probed instead of the rewrite, so the address must be free first.
-	ln, err := net.Listen("tcp", addr)
-	if err != nil {
-		return nil, fmt.Errorf("wire: address %s is in use, so the rewrite cannot be probed on it: %w", addr, err)
-	}
-	ln.Close()
-	stop, err := StartApp(bin, UnitEnv(unit, "", originalURL), addr)
+	// No free-port pre-check: the caller owns the process it starts, and StartAppOwned reports an exit.
+	// If something else already holds the address, the program exits on bind and the start fails there.
+	stop, exited, err := StartAppOwned(bin, UnitEnv(unit, "", originalURL), addr)
 	if err != nil {
 		return nil, err
 	}
@@ -51,6 +45,11 @@ func RunHTTPProbesLive(root, unit, originalURL string, probes []domain.AppCase) 
 			return nil, fmt.Errorf("wire: live probe %s %s: %w", p.Method, p.Path, err)
 		}
 		out[i] = withProbe(p, domain.AppCase{Status: got.Status, ResponseBody: got.ResponseBody, Headers: got.Headers})
+		select {
+		case <-exited:
+			return nil, fmt.Errorf("wire: the program exited during the live probes, so its answers cannot be trusted")
+		default:
+		}
 	}
 	return out, nil
 }

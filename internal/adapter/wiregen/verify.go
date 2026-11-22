@@ -75,31 +75,53 @@ func ListenAddress(root, mainFile string) (string, error) {
 	return net.JoinHostPort(host, port), nil
 }
 
-// StartApp starts the built program with extra environment and waits until its address accepts
-// connections. The caller stops it with the returned function.
+// StartApp starts the built program and waits until it accepts connections on addr. Use
+// StartAppOwned when the run must also notice the program exiting underneath it.
 func StartApp(bin string, env []string, addr string) (func(), error) {
+	stop, _, err := StartAppOwned(bin, env, addr)
+	return stop, err
+}
+
+// StartAppOwned starts the built program like StartApp and also returns a channel that closes when
+// the program exits. There is no free-port pre-check: another process could take the port in the
+// window between such a check and the start. Instead the caller owns the process it started, and a
+// run whose program exits is a failure: after the exit, any listener on the address belongs to
+// someone else.
+func StartAppOwned(bin string, env []string, addr string) (func(), <-chan struct{}, error) {
 	cmd := exec.Command(bin)
 	cmd.Env = append(os.Environ(), env...)
 	var logBuf bytes.Buffer
 	cmd.Stdout = &logBuf
 	cmd.Stderr = &logBuf
 	if err := cmd.Start(); err != nil {
-		return func() {}, fmt.Errorf("wire verify: start program: %w", err)
+		return func() {}, nil, fmt.Errorf("wire verify: start program: %w", err)
 	}
-	stop := func() {
-		cmd.Process.Kill()
+	exited := make(chan struct{})
+	go func() {
 		cmd.Wait()
+		close(exited)
+	}()
+	stop := func() {
+		if cmd.Process != nil {
+			cmd.Process.Kill()
+		}
+		<-exited
 	}
 	deadline := time.Now().Add(15 * time.Second)
 	for time.Now().Before(deadline) {
+		select {
+		case <-exited:
+			return func() {}, nil, fmt.Errorf("wire verify: the program exited before it listened on %s; output:\n%s", addr, logBuf.String())
+		default:
+		}
 		if conn, err := net.DialTimeout("tcp", addr, 200*time.Millisecond); err == nil {
 			conn.Close()
-			return stop, nil
+			return stop, exited, nil
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
 	stop()
-	return func() {}, fmt.Errorf("wire verify: the program did not listen on %s within 15s; output:\n%s", addr, logBuf.String())
+	return func() {}, nil, fmt.Errorf("wire verify: the program did not listen on %s within 15s; output:\n%s", addr, logBuf.String())
 }
 
 // unitEnv is the environment that sends one unit to its rewrite and the rest to the original.
