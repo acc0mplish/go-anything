@@ -103,3 +103,16 @@ func TestPublicCaseAllowsAnonymous(t *testing.T) {
 		t.Fatal("a public case must be allowed for anonymous callers")
 	}
 }
+
+func TestDenyReasonKeepsUnauthenticatedForbiddenAndNotFoundApart(t *testing.T) {
+	cases := map[int]DenyReason{401: DenyUnauthenticated, 403: DenyForbidden, 404: DenyNotFound,
+		200: DenyNone, 400: DenyNone, 500: DenyNone}
+	for status, want := range cases {
+		if got := DenyReasonOf(status); got != want {
+			t.Fatalf("status %d: want reason %q, got %q", status, want, got)
+		}
+	}
+	if ClassifyStatus(401) != OutcomeDeny || ClassifyStatus(403) != OutcomeDeny || ClassifyStatus(404) != OutcomeDeny {
+		t.Fatal("the allow/deny decision must not change: 401, 403 and 404 are still denials")
+	}
+}
