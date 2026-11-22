@@ -46,6 +46,9 @@ func cmdRBAC(args []string, stdout io.Writer) error {
 	if err := usecase.ValidatePolicies(policies, principals); err != nil {
 		return err
 	}
+	if err := usecase.ValidateCaseNames(policies, cases); err != nil {
+		return err
+	}
 	rewriteM, err := usecase.RunMatrix(cases, principals, wiregen.ProbeWith(wiregen.RBACRequest, *base))
 	if err != nil {
 		return err
