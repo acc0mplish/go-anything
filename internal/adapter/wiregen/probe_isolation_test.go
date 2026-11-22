@@ -1,6 +1,9 @@
 package wiregen
 
 import (
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -67,5 +70,39 @@ func TestRunProbeCLITimeoutRecordsExit124(t *testing.T) {
 	}
 	if got[0].ExitCode != 124 || !strings.Contains(got[0].Stderr, "timed out") {
 		t.Fatalf("a hung probe must carry exit 124 and say so: %+v", got[0])
+	}
+}
+
+// TestAskOriginalSendsBodyAndHeaders pins the wire symmetry (issue #16): the original side receives
+// the same bytes the rewrite side would. A probe carrying a body and request headers must deliver
+// them, and a JSON body without a declared type gets the same default Content-Type app.Runner adds.
+func TestAskOriginalSendsBodyAndHeaders(t *testing.T) {
+	var seen struct {
+		method, path, body, ctype, token string
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		seen.method, seen.path, seen.body = r.Method, r.URL.Path, string(b)
+		seen.ctype, seen.token = r.Header.Get("Content-Type"), r.Header.Get("X-Probe-Token")
+		w.WriteHeader(204)
+	}))
+	defer srv.Close()
+	probe := domain.AppCase{Kind: "http", Method: "POST", Path: "/orders/7", Body: `{"q": 1}`,
+		RequestHeaders: map[string]string{"X-Probe-Token": "shape-variant"}}
+	got, err := AskOriginal("http", "", srv.URL, probe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if seen.method != "POST" || seen.path != "/orders/7" || seen.body != `{"q": 1}` {
+		t.Fatalf("the original must receive the probe's method, path and body: %+v", seen)
+	}
+	if seen.token != "shape-variant" {
+		t.Fatalf("the original must receive the probe's request headers: %+v", seen)
+	}
+	if seen.ctype != "application/json" {
+		t.Fatalf("an unlabeled JSON body gets the same default Content-Type the rewrite side gets: %+v", seen)
+	}
+	if got.Status != 204 {
+		t.Fatalf("the answer must come back: %+v", got)
 	}
 }

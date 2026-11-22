@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,6 +16,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/go-anything/go-anything/internal/adapter/app"
 	"github.com/go-anything/go-anything/internal/domain"
 )
 
@@ -334,12 +334,10 @@ func AskOriginal(kind, originalCLI, originalURL string, probe domain.AppCase) (d
 		}
 		return withProbe(probe, domain.AppCase{ExitCode: code, Stdout: stdout.String(), Stderr: stderr.String()}), nil
 	}
-	client := &http.Client{Timeout: 30 * time.Second}
-	req, err := http.NewRequest(probe.Method, strings.TrimRight(originalURL, "/")+probe.Path, nil)
-	if err != nil {
-		return domain.AppCase{}, err
-	}
-	resp, err := client.Do(req)
+	// HTTP probes go through app.Runner, the same request builder the rewrite side uses, so method, path,
+	// body, request headers and default Content-Type are identical on both sides (issue #16).
+	runner := app.Runner{BaseURL: originalURL}
+	got, err := runner.Do(probe)
 	if err != nil {
 		if droppedAfterAccept(err) {
 			return withProbe(probe, domain.AppCase{Status: domain.NoResponse,
@@ -347,14 +345,5 @@ func AskOriginal(kind, originalCLI, originalURL string, probe domain.AppCase) (d
 		}
 		return domain.AppCase{}, fmt.Errorf("wire: ask original %s: %w", probe.Path, err)
 	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return domain.AppCase{}, err
-	}
-	a := domain.AppCase{Status: resp.StatusCode, ResponseBody: string(body)}
-	if ct := resp.Header.Get("Content-Type"); ct != "" {
-		a.Headers = map[string]string{"Content-Type": ct}
-	}
-	return withProbe(probe, a), nil
+	return withProbe(probe, got), nil
 }
