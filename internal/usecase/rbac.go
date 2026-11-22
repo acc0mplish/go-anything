@@ -210,6 +210,31 @@ func ValidatePolicies(policies []domain.CasePolicy, principals []domain.Principa
 	return nil
 }
 
+// ValidateCaseNames rejects a policy whose case name matches no recorded case. Before this check, a policy
+// whose case name was misspelled or stale was silently dropped: Audit iterates only the recorded cases, so the
+// policy produced no finding and the gap went unreported. A case with no policy is not an error here; the
+// caller reports it as a warning, because such a case is still compared with the original.
+func ValidateCaseNames(policies []domain.CasePolicy, cases []domain.AppCase) error {
+	recorded := map[string]bool{}
+	for _, c := range cases {
+		recorded[c.Name] = true
+	}
+	seen := map[string]bool{}
+	for _, pol := range policies {
+		if pol.Case == "" {
+			return fmt.Errorf("rbac: a policy has an empty case name")
+		}
+		if seen[pol.Case] {
+			return fmt.Errorf("rbac: case %q has more than one policy", pol.Case)
+		}
+		seen[pol.Case] = true
+		if !recorded[pol.Case] {
+			return fmt.Errorf("rbac: policy names case %q, which matches no recorded case, so the policy would never be checked", pol.Case)
+		}
+	}
+	return nil
+}
+
 func splitKey(key string) (string, string) {
 	for i := 0; i < len(key); i++ {
 		if key[i] == 0 {

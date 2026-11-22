@@ -263,3 +263,30 @@ func TestRunMatrixRecordsTheDenyReason(t *testing.T) {
 		}
 	}
 }
+
+// TestValidateCaseNames pins the loud failure: a policy whose case name matches no recorded case
+// would silently never be checked, and a duplicate or empty case name makes the mapping ambiguous.
+func TestValidateCaseNames(t *testing.T) {
+	cases := []domain.AppCase{{Name: "list", Kind: "http"}, {Name: "get", Kind: "http"}}
+	for _, tc := range []struct {
+		name     string
+		policies []domain.CasePolicy
+		want     string
+	}{
+		{"good", []domain.CasePolicy{{Case: "list"}, {Case: "get"}}, ""},
+		{"unknown case", []domain.CasePolicy{{Case: "list"}, {Case: "lst"}}, "matches no recorded case"},
+		{"duplicate", []domain.CasePolicy{{Case: "list"}, {Case: "list"}}, "more than one policy"},
+		{"empty name", []domain.CasePolicy{{Case: ""}}, "empty case name"},
+	} {
+		err := ValidateCaseNames(tc.policies, cases)
+		if tc.want == "" && err != nil {
+			t.Fatalf("%s: must pass, got %v", tc.name, err)
+		}
+		if tc.want != "" && (err == nil || !strings.Contains(err.Error(), tc.want)) {
+			t.Fatalf("%s: want an error naming %q, got %v", tc.name, tc.want, err)
+		}
+	}
+	if err := ValidateCaseNames(nil, cases); err != nil {
+		t.Fatalf("no policies is fine: %v", err)
+	}
+}
