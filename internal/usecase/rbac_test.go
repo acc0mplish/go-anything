@@ -290,3 +290,27 @@ func TestValidateCaseNames(t *testing.T) {
 		t.Fatalf("no policies is fine: %v", err)
 	}
 }
+
+// TestDivergenceWithPolicyMatchingRewriteIsStillReported pins the unmasked report: when the rewrite
+// matches the declared policy but the original answers differently, the difference is recorded as an
+// original defect instead of disappearing, and it still does not block convergence.
+func TestDivergenceWithPolicyMatchingRewriteIsStillReported(t *testing.T) {
+	orig := leakFor(adminAcme, clerkGlobex)
+	rew := leakFor(adminAcme)
+	rewriteF, originalD := SplitFindings(policy, principals, orig, rew)
+	if HasCritical(rewriteF) {
+		t.Fatalf("the rewrite matches the policy and must not block: %+v", rewriteF)
+	}
+	var diverged *Finding
+	for i := range originalD {
+		if strings.Contains(originalD[i].Detail, "original and rewrite differ") {
+			diverged = &originalD[i]
+		}
+	}
+	if diverged == nil {
+		t.Fatalf("the original/rewrite difference must be reported, not masked: %+v", originalD)
+	}
+	if diverged.Principal != "clerk-globex" || !strings.Contains(diverged.Detail, "rewrite matches the declared policy") {
+		t.Fatalf("the finding must name the principal and say the rewrite matched policy: %+v", *diverged)
+	}
+}
