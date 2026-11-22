@@ -126,12 +126,18 @@ func StartAppOwned(bin string, env []string, addr string) (func(), <-chan struct
 	return func() {}, nil, fmt.Errorf("wire verify: the program did not listen on %s within 15s; output:\n%s", addr, logBuf.String())
 }
 
-// allowedParentEnv returns only the parent variables the program needs to run: a path, a home and a temp directory.
+// allowedParentEnv returns only the parent variables the program needs to run: a path, a home and a
+// temp directory, and the GA_* switches an operator may have set for other units. Secrets such as
+// tokens or cloud credentials must not leak into the agent-generated rewrite (issue #20).
 func allowedParentEnv() []string {
-	keep := map[string]bool{"PATH": true, "HOME": true, "TMPDIR": true, "TZ": true, "LANG": true}
 	var out []string
 	for _, kv := range os.Environ() {
-		if name, _, ok := strings.Cut(kv, "="); ok && keep[name] {
+		name, _, ok := strings.Cut(kv, "=")
+		if !ok {
+			continue
+		}
+		if name == "PATH" || name == "HOME" || name == "TMPDIR" || name == "TZ" || name == "LANG" ||
+			strings.HasPrefix(name, "GA_") {
 			out = append(out, kv)
 		}
 	}
