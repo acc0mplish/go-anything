@@ -40,6 +40,13 @@ func RunHTTPProbesLive(root, unit, originalURL string, probes []domain.AppCase) 
 	runner := app.Runner{BaseURL: "http://" + addr}
 	out := make([]domain.AppCase, len(probes))
 	for i, p := range probes {
+		// Check before each probe: a program that exited can no longer answer for itself, so any reply now
+		// would come from a different process on the address (issue #17).
+		select {
+		case <-exited:
+			return nil, fmt.Errorf("wire: the program exited before probe %d, so its answers cannot be trusted", i)
+		default:
+		}
 		got, err := runner.Do(p)
 		if err != nil {
 			return nil, fmt.Errorf("wire: live probe %s %s: %w", p.Method, p.Path, err)
