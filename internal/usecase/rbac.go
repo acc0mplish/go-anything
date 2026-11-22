@@ -12,6 +12,9 @@ import (
 type Cell struct {
 	Outcome domain.Outcome
 	Status  int
+	// Reason names which refusal a deny was, so a report can tell an unauthenticated 401 from a
+	// forbidden 403 or a hidden 404. The allow/deny decision itself never depends on it.
+	Reason domain.DenyReason
 }
 
 // Matrix holds one side's answers, keyed by case and principal.
@@ -35,7 +38,8 @@ func RunMatrix(cases []domain.AppCase, principals []domain.Principal, probe Prob
 			if err != nil {
 				return nil, fmt.Errorf("rbac: case %q as %q: %w", c.Name, p.Name, err)
 			}
-			m[MatrixKey(c.Name, p.Name)] = Cell{Outcome: domain.ClassifyStatus(status), Status: status}
+			m[MatrixKey(c.Name, p.Name)] = Cell{Outcome: domain.ClassifyStatus(status), Status: status,
+				Reason: domain.DenyReasonOf(status)}
 		}
 	}
 	return m, nil
