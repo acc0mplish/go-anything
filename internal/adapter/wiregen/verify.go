@@ -98,6 +98,10 @@ func StartAppOwned(bin string, env []string, addr string) (func(), <-chan struct
 	// Only an allowlisted part of the parent environment reaches the program, plus the unit's own entries.
 	// Secrets such as tokens or cloud credentials in the parent must not leak into it (issue #20).
 	cmd.Env = append(allowedParentEnv(), env...)
+	// Own process group, so cleanup can kill the program and anything it spawned, and a grandchild
+	// that inherits the output pipes cannot hold Wait open after the kill (issue #18).
+	ownProcessGroup(cmd)
+	cmd.WaitDelay = 5 * time.Second
 	var logBuf bytes.Buffer
 	cmd.Stdout = &logBuf
 	cmd.Stderr = &logBuf
@@ -111,7 +115,8 @@ func StartAppOwned(bin string, env []string, addr string) (func(), <-chan struct
 	}()
 	stop := func() {
 		if cmd.Process != nil {
-			cmd.Process.Kill()
+			// The group dies together: grandchildren that survived the direct child go with it.
+			killProcessGroup(cmd.Process.Pid)
 		}
 		<-exited
 	}
