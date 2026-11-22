@@ -45,7 +45,7 @@ func Handle(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		v = args[1]
 	} else {
 		line, _ := bufio.NewReader(stdin).ReadString('\n')
-		v = strings.TrimRight(line, "\r\n")
+		v = strings.Trim(line, " \t\r\n") // sh read strips only IFS whitespace; a NBSP survives it
 	}
 	fmt.Fprintf(stdout, "order:%s\n", v)
 	return 0

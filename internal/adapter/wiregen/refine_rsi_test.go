@@ -59,7 +59,7 @@ func Handle(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		v = args[1]
 	} else {
 		line, _ := bufio.NewReader(stdin).ReadString('\n')
-		v = strings.TrimSpace(line) // sh read -r trims the spaces of IFS
+		v = strings.Trim(line, " \t\r\n") // sh read strips only IFS whitespace; a NBSP survives it
 	}
 `
 	if crash007 {
