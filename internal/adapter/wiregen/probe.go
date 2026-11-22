@@ -185,21 +185,75 @@ func probeInput(kind string, probes []domain.AppCase) ([]byte, error) {
 	return json.Marshal(list)
 }
 
+// probeTimeout bounds one probe. A unit that hangs or never returns is reported as an error, not waited
+// on. It is a var so tests can shorten it instead of waiting a real ten seconds.
+var probeTimeout = 10 * time.Second
+
 // RunProbe runs the probe program on every probe and returns the rewrite's answers, in order.
+// CLI probes run each probe in its own child process with a timeout, so a unit that calls os.Exit ends only
+// its own child, and a hang is killed at the timeout. HTTP probes keep one process, because they do not exit it.
 func RunProbe(bin, kind string, probes []domain.AppCase) ([]domain.AppCase, error) {
+	if kind == "cli" {
+		return runCLIProbes(bin, probes)
+	}
 	in, err := probeInput(kind, probes)
 	if err != nil {
 		return nil, err
 	}
-	cmd := exec.Command(bin)
+	ctx, cancel := context.WithTimeout(context.Background(), probeTimeout*time.Duration(len(probes)+1))
+	defer cancel()
+	cmd := exec.CommandContext(ctx, bin)
 	cmd.Stdin = bytes.NewReader(in)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return nil, fmt.Errorf("wire: probe program did not finish within the time limit")
+		}
 		return nil, fmt.Errorf("wire: probe program failed: %w: %s", err, strings.TrimSpace(stderr.String()))
 	}
 	return decodeAnswers(kind, probes, stdout.Bytes())
+}
+
+// runCLIProbes sends each CLI probe to its own child process of the harness binary, with a timeout.
+// The harness answers one probe per run, so an exit or hang inside the unit stays in that child.
+func runCLIProbes(bin string, probes []domain.AppCase) ([]domain.AppCase, error) {
+	out := make([]domain.AppCase, len(probes))
+	for i, p := range probes {
+		in, err := probeInput("cli", []domain.AppCase{p})
+		if err != nil {
+			return nil, err
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), probeTimeout)
+		cmd := exec.CommandContext(ctx, bin)
+		cmd.Stdin = bytes.NewReader(in)
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		runErr := cmd.Run()
+		timedOut := ctx.Err() == context.DeadlineExceeded
+		cancel()
+		if timedOut {
+			out[i] = withProbe(p, domain.AppCase{ExitCode: 124, Stderr: "probe timed out after " + probeTimeout.String()})
+			continue
+		}
+		if runErr != nil {
+			// The unit exited the child (for example through os.Exit) before it answered. That exit is the unit's
+			// answer for this probe, so it is recorded as the exit code rather than failing the whole run.
+			if ee, ok := runErr.(*exec.ExitError); ok && stdout.Len() == 0 {
+				out[i] = withProbe(p, domain.AppCase{ExitCode: ee.ExitCode(), Stderr: stderr.String()})
+				continue
+			}
+			return nil, fmt.Errorf("wire: probe program failed: %w: %s", runErr, strings.TrimSpace(stderr.String()))
+		}
+		ans, err := decodeAnswers("cli", []domain.AppCase{p}, stdout.Bytes())
+		if err != nil {
+			return nil, err
+		}
+		out[i] = ans[0]
+	}
+	return out, nil
 }
 
 func decodeAnswers(kind string, probes []domain.AppCase, data []byte) ([]domain.AppCase, error) {
@@ -260,13 +314,18 @@ func droppedAfterAccept(err error) bool {
 // AskOriginal sends one probe to the original: a program for command-line units, a URL for HTTP units.
 func AskOriginal(kind, originalCLI, originalURL string, probe domain.AppCase) (domain.AppCase, error) {
 	if kind == "cli" {
-		cmd := exec.Command(originalCLI, probe.Argv...)
+		ctx, cancel := context.WithTimeout(context.Background(), probeTimeout)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, originalCLI, probe.Argv...)
 		cmd.Stdin = strings.NewReader(probe.Stdin)
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
 		code := 0
 		if err := cmd.Run(); err != nil {
+			if ctx.Err() == context.DeadlineExceeded {
+				return domain.AppCase{}, fmt.Errorf("wire: original %s did not finish within %s on %v", originalCLI, probeTimeout, probe.Argv)
+			}
 			ee, ok := err.(*exec.ExitError)
 			if !ok {
 				return domain.AppCase{}, fmt.Errorf("wire: run original %s: %w", originalCLI, err)
