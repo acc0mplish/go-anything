@@ -95,7 +95,9 @@ func StartAppOwned(bin string, env []string, addr string) (func(), <-chan struct
 		return func() {}, nil, fmt.Errorf("wire verify: %s already accepts connections before the program starts; another process owns it", addr)
 	}
 	cmd := exec.Command(bin)
-	cmd.Env = append(os.Environ(), env...)
+	// Only an allowlisted part of the parent environment reaches the program, plus the unit's own entries.
+	// Secrets such as tokens or cloud credentials in the parent must not leak into it (issue #20).
+	cmd.Env = append(allowedParentEnv(), env...)
 	var logBuf bytes.Buffer
 	cmd.Stdout = &logBuf
 	cmd.Stderr = &logBuf
@@ -128,6 +130,24 @@ func StartAppOwned(bin string, env []string, addr string) (func(), <-chan struct
 	}
 	stop()
 	return func() {}, nil, fmt.Errorf("wire verify: the program did not listen on %s within 15s; output:\n%s", addr, logBuf.String())
+}
+
+// allowedParentEnv returns only the parent variables the program needs to run: a path, a home and a
+// temp directory, and the GA_* switches an operator may have set for other units. Secrets such as
+// tokens or cloud credentials must not leak into the agent-generated rewrite (issue #20).
+func allowedParentEnv() []string {
+	var out []string
+	for _, kv := range os.Environ() {
+		name, _, ok := strings.Cut(kv, "=")
+		if !ok {
+			continue
+		}
+		if name == "PATH" || name == "HOME" || name == "TMPDIR" || name == "TZ" || name == "LANG" ||
+			strings.HasPrefix(name, "GA_") {
+			out = append(out, kv)
+		}
+	}
+	return out
 }
 
 // unitEnv is the environment that sends one unit to its rewrite and the rest to the original.

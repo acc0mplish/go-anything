@@ -18,6 +18,7 @@ import (
 
 	"github.com/go-anything/go-anything/internal/adapter/app"
 	"github.com/go-anything/go-anything/internal/domain"
+	"github.com/go-anything/go-anything/internal/usecase"
 )
 
 // probeHarnessCLI is a program inside the module that calls a command-line unit's Handle for each probe.
@@ -122,6 +123,11 @@ func run(p probe) (a answer) {
 // BuildProbe writes the probe program for a unit, builds it, and returns the binary and a cleanup
 // function. The program lives under the unit's folder only while it is built, and is removed after.
 func BuildProbe(root, unit, kind, module string) (string, func(), error) {
+	// The unit name becomes a directory name, an import path and a package clause, so the one
+	// validator decides: same rule as Gen, including the reserved names (issue #20).
+	if err := usecase.ValidUnitName(unit); err != nil {
+		return "", func() {}, err
+	}
 	tpl := probeHarnessHTTP
 	if kind == "cli" {
 		tpl = probeHarnessCLI
