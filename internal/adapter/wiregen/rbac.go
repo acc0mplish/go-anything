@@ -67,6 +67,11 @@ func ProbeWith(build func(domain.AppCase, domain.Principal) domain.AppCase, base
 // rewrite and on the original, and splits the findings. A probe that cannot be made is an error, never an
 // answer: a check that did not run must not look like a check that passed.
 func CheckRBAC(root, unit string, cases []domain.AppCase, rb RBACOptions, originalURL string) (RBACReport, error) {
+	// A policy naming no recorded case would never be checked; refuse before anything starts.
+	if err := usecase.ValidateCaseNames(rb.Policies, cases); err != nil {
+		return RBACReport{}, err
+	}
+
 	if len(cases) == 0 {
 		return RBACReport{}, fmt.Errorf("rbac: unit %s has no recorded HTTP case, so there is nothing to check", unit)
 	}
