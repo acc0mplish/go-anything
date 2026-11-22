@@ -157,8 +157,13 @@ func SplitFindings(policies []domain.CasePolicy, principals []domain.Principal, 
 		pol, hasPolicy := policyOf[f.Case]
 		cell := rewrite[MatrixKey(f.Case, f.Principal)]
 		if hasPolicy && cell.Outcome == pol.Expect(byName[f.Principal]) {
-			// The rewrite matches the policy, so the original is the side that differs from intent. Its
-			// violation is already in originalDefects, so this difference is not the rewrite's.
+			// The rewrite matches the policy, so the rewrite is not at fault and this does not block convergence.
+			// It is still reported, as an original defect: dropping it would hide that the original and the rewrite
+			// now answer differently.
+			o := original[MatrixKey(f.Case, f.Principal)]
+			originalDefects = append(originalDefects, Finding{SeverityHigh, f.Case, f.Principal,
+				fmt.Sprintf("original and rewrite differ: original %s (status %d), rewrite %s (status %d), and the rewrite matches the declared policy",
+					o.Outcome, o.Status, cell.Outcome, cell.Status)})
 			continue
 		}
 		rewriteFindings = append(rewriteFindings, f)
