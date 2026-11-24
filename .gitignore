@@ -16,3 +16,14 @@ coverage.out
 .codex/
 .gemini/
 .pi/
+
+# stub files the claude-mem plugin writes into sub-folders; only the root guide file is tracked
+CLAUDE.md
+!/CLAUDE.md
+
+# per-task working state is not committed (see effort-router §5)
+docs/task-id/
+
+# work results live under WORK/; only the folder rules file is tracked
+WORK/*
+!WORK/README.md
