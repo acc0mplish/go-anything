@@ -8,6 +8,7 @@ import (
 	"math"
 	"math/big"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -27,13 +28,18 @@ type CompareOptions struct {
 	// numbers inside JSON answers (with JSONBody) and to lines that are a number as a whole (in any answer
 	// compared as text). 0 means numbers must be equal exactly. It must be finite and >= 0.
 	FloatTolerance float64 `json:"float_tolerance,omitempty"`
-	// Normalize names value normalizers applied to BOTH sides before comparison: the built-ins
-	// "timestamps" and "uuids", or a custom "name=regex" whose matches are replaced by "<name>" on both
-	// sides. Volatile values that differ between the original and the rewrite (a clock reading, a fresh
-	// UUID) then compare as equal. The mask is literal text, so masking inside a JSON string value keeps
-	// the JSON valid; a custom regex that eats structural bytes (quotes, braces) is the operator's
-	// responsibility. Numbers are never masked by the built-ins: an epoch-looking integer is data, not a
-	// clock (a date written as 2026-11-22T01:23:45Z is masked; the same moment as 1795277025000 is not).
+	// Normalize names value normalizers applied to BOTH sides before comparison: a built-in name
+	// ("timestamps", "uuids", "host_urls", "counts", "tokens", "session_ids", "oauth") or a custom
+	// "name=regex" whose matches are replaced by "<name>" on both sides. Volatile values that differ
+	// between the original and the rewrite (a clock reading, a fresh UUID, a session token) then compare
+	// as equal. Every built-in mask is written so the answer stays valid JSON: a mask inside a string
+	// value stays inside the quotes, and the built-ins that match a whole string field re-emit the key
+	// with a quoted "<mask>" value. A custom regex that eats structural bytes (quotes, braces) is the
+	// operator's responsibility. One built-in deliberately masks numbers: "counts" replaces the integer
+	// under a count-like key with the quoted string "<counts>", so a volatile counter on one side only
+	// compares as equal, not as a number. Every other built-in leaves numbers alone: an epoch-looking
+	// integer is data, not a clock (a date written as 2026-11-22T01:23:45Z is masked; the same moment as
+	// 1795277025000 is not).
 	Normalize []string `json:"normalize,omitempty"`
 }
 
@@ -82,10 +88,13 @@ func (o CompareOptions) Describe() string {
 	return s
 }
 
-// normalizer replaces volatile values with a fixed mask on both sides of a comparison.
+// normalizer replaces volatile values with a fixed mask on both sides of a comparison. Repl is the
+// replacement text for each match; built-ins set it so masking keeps a JSON answer valid (the key and
+// the surrounding quotes survive), a custom regex masks each match as "<name>".
 type normalizer struct {
 	name string
 	re   *regexp.Regexp
+	repl string
 }
 
 // builtinNormalizers are the named masks every command can ask for by name.
@@ -95,6 +104,49 @@ var builtinNormalizers = map[string]*regexp.Regexp{
 	"timestamps": regexp.MustCompile(`\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2}(\.\d{1,9})?)?(Z|[+-]\d{2}:?\d{2})?)?`),
 	// A canonical UUID, case-insensitive: 01234567-89ab-cdef-0123-456789abcdef.
 	"uuids": regexp.MustCompile(`(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`),
+	// Scheme and host (with optional port) of an http(s) URL; the path and query stay compared.
+	// The \?/ form also catches a slash escaped as \/ (PHP json_encode), inside a JSON string value or in
+	// plain text such as a redirect page.
+	"host_urls": regexp.MustCompile(`https?:\\?/\\?/[A-Za-z0-9._~-]+(:\d+)?`),
+	// The integer under a count-like key: "total", "count", "unread", "unread_count", "*_count". The key
+	// ($1) and separator ($2) survive and the value becomes the quoted string "<counts>", so a JSON answer
+	// stays valid; a fixed setting such as "per_page" is not matched.
+	"counts": regexp.MustCompile(`"(total|count|unread|unread_count|[A-Za-z_]+_count)"(\s*:\s*)\d+`),
+	// A whole JSON string field whose name ends in token, api_key/api-key or secret: the value is replaced
+	// by "<tokens>" and the key ($1) is re-emitted with quotes, keeping the JSON valid.
+	"tokens": regexp.MustCompile(`"([a-z_]*(?:token|api_?key|secret))"\s*:\s*"[^"]*"`),
+	// A whole JSON string field named session_id, sessionid or sessionId (case-insensitive key, preserved).
+	"session_ids": regexp.MustCompile(`"((?i:session_?id))"\s*:\s*"[^"]*"`),
+	// The per-run query parameters of an OAuth flow (state, nonce): the separator ($1) and the parameter
+	// name ($2) survive. Also matches HTML-escaped &amp; in a redirect page.
+	"oauth": regexp.MustCompile(`(&amp;|[?&])(state|nonce)=[^&"'<\\\s]+`),
+}
+
+// builtinReplacement is the replacement text for the built-ins whose mask must rebuild part of the
+// match to keep a JSON answer valid. A built-in missing here masks each match as "<name>".
+var builtinReplacement = map[string]string{
+	"counts":      `"${1}"${2}"<counts>"`,
+	"tokens":      `"${1}":"<tokens>"`,
+	"session_ids": `"${1}":"<session_ids>"`,
+	"oauth":       `${1}${2}=<oauth>`,
+}
+
+// IsBuiltinNormalizer reports whether name is one of the built-in normalizer names. The -normalize
+// flag parser uses it to tell a comma-separated list of built-ins apart from a custom regex that
+// merely contains a comma.
+func IsBuiltinNormalizer(name string) bool {
+	_, ok := builtinNormalizers[name]
+	return ok
+}
+
+// builtinNames lists the built-in normalizer names in fixed order, for error messages.
+func builtinNames() string {
+	names := make([]string, 0, len(builtinNormalizers))
+	for n := range builtinNormalizers {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	return strings.Join(names, ", ")
 }
 
 // parseNormalizers turns specs into normalizers, rejecting anything unknown or uncompilable.
@@ -102,12 +154,16 @@ func parseNormalizers(specs []string) ([]normalizer, error) {
 	out := make([]normalizer, 0, len(specs))
 	for _, spec := range specs {
 		if re, ok := builtinNormalizers[spec]; ok {
-			out = append(out, normalizer{name: spec, re: re})
+			repl, ok := builtinReplacement[spec]
+			if !ok {
+				repl = "<" + spec + ">"
+			}
+			out = append(out, normalizer{name: spec, re: re, repl: repl})
 			continue
 		}
 		name, pattern, ok := strings.Cut(spec, "=")
 		if !ok {
-			return nil, fmt.Errorf("unknown normalizer %q: use timestamps, uuids, or name=regex", spec)
+			return nil, fmt.Errorf("unknown normalizer %q: use one of the built-ins (%s) or name=regex", spec, builtinNames())
 		}
 		if name == "" || strings.ContainsAny(name, "<>= \t\n") {
 			return nil, fmt.Errorf("normalizer name %q must be non-empty and free of <, >, = and whitespace", name)
@@ -116,7 +172,7 @@ func parseNormalizers(specs []string) ([]normalizer, error) {
 		if err != nil {
 			return nil, fmt.Errorf("normalizer %s: %w", name, err)
 		}
-		out = append(out, normalizer{name: name, re: re})
+		out = append(out, normalizer{name: name, re: re, repl: "<" + name + ">"})
 	}
 	return out, nil
 }
@@ -124,7 +180,7 @@ func parseNormalizers(specs []string) ([]normalizer, error) {
 // normalizeForCompare masks volatile values on one side of a comparison.
 func normalizeForCompare(s string, ns []normalizer) string {
 	for _, n := range ns {
-		s = n.re.ReplaceAllString(s, "<"+n.name+">")
+		s = n.re.ReplaceAllString(s, n.repl)
 	}
 	return s
 }
@@ -138,9 +194,12 @@ func EqualBody(want, got string, opt CompareOptions) (equal bool, why string) {
 		opt = CompareOptions{}
 	}
 	if ns, err := parseNormalizers(opt.Normalize); err == nil && len(ns) > 0 {
-		// The mask replaces the volatile value on both sides, so a differing clock reading or UUID
-		// compares as equal while everything around it still must match. Masking runs before the JSON
-		// parse; the built-ins only touch text inside values, never structure or numbers.
+		// The mask replaces the volatile value on both sides, so a differing clock reading, token or
+		// session id compares as equal while everything around it still must match. Masking runs before
+		// the JSON parse; the built-ins rebuild enough of the match (key, quotes, separators) that a JSON
+		// answer stays valid JSON. The one exception that touches a number is "counts": it replaces the
+		// integer with the quoted string "<counts>" on both sides, so the comparison still sees two
+		// strings, never a number loosened into a tolerance.
 		want, got = normalizeForCompare(want, ns), normalizeForCompare(got, ns)
 	}
 	if opt.JSONBody {

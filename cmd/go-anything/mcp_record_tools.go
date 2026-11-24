@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/go-anything/go-anything/internal/adapter/app"
 	"github.com/go-anything/go-anything/internal/adapter/mcp"
 	"github.com/go-anything/go-anything/internal/adapter/store"
 	"github.com/go-anything/go-anything/internal/adapter/subject"
@@ -134,7 +135,7 @@ func registerRecordTools(srv *mcp.Server) {
 			if err := json.Unmarshal(data, &in); err != nil {
 				return "", fmt.Errorf("app_record: parse cases: %w", err)
 			}
-			runner, err := appRunner(a.Base, a.CLI)
+			runner, err := appRunner(a.Base, a.CLI, app.Pacing{})
 			if err != nil {
 				return "", err
 			}

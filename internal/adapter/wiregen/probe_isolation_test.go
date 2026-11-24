@@ -89,7 +89,7 @@ func TestAskOriginalSendsBodyAndHeaders(t *testing.T) {
 	defer srv.Close()
 	probe := domain.AppCase{Kind: "http", Method: "POST", Path: "/orders/7", Body: `{"q": 1}`,
 		RequestHeaders: map[string]string{"X-Probe-Token": "shape-variant"}}
-	got, err := AskOriginal("http", "", srv.URL, probe)
+	got, err := AskOriginal("http", "", srv.URL, probe, WireOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

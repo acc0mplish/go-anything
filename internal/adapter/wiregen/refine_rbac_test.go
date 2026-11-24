@@ -23,15 +23,21 @@ func TestRoundConvergenceNeedsNoCriticalAuthorizationFinding(t *testing.T) {
 		name        string
 		disagree    int
 		findings    []usecase.Finding
+		diverges    int
+		chainDiv    int
+		chainPend   int
 		wantConverg bool
 	}{
-		{"0 disagreements and 1 critical RBAC finding is not converged", 0, critical, false},
-		{"0 disagreements and 0 RBAC findings is converged", 0, nil, true},
-		{"0 disagreements and a high finding alone still converges", 0, high, true},
-		{"a probe disagreement is never converged", 1, nil, false},
+		{"0 disagreements and 1 critical RBAC finding is not converged", 0, critical, 0, 0, 0, false},
+		{"0 disagreements and 0 RBAC findings is converged", 0, nil, 0, 0, 0, true},
+		{"0 disagreements and a high finding alone still converges", 0, high, 0, 0, 0, true},
+		{"a probe disagreement is never converged", 1, nil, 0, 0, 0, false},
+		{"1 concurrent divergence is never converged", 0, nil, 1, 0, 0, false},
+		{"1 diverging chain is never converged", 0, nil, 0, 1, 0, false},
+		{"1 unjudgeable chain is never converged", 0, nil, 0, 0, 1, false},
 	}
 	for _, tc := range cases {
-		if got := roundConverged(tc.disagree, tc.findings); got != tc.wantConverg {
+		if got := roundConverged(tc.disagree, tc.findings, tc.diverges, tc.chainDiv, tc.chainPend); got != tc.wantConverg {
 			t.Errorf("%s: got converged=%v", tc.name, got)
 		}
 	}

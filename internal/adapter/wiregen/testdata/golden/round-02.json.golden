@@ -1,0 +1,42 @@
+{
+  "round": 2,
+  "seed": 3,
+  "values": 4,
+  "boundary_values": 3,
+  "generated_values": 1,
+  "value_classes": {
+    "ascii-digits": 0,
+    "empty": 1,
+    "leading-zero": 1,
+    "non-numeric": 2,
+    "numeric-symbol": 0,
+    "overflow": 0,
+    "padded": 0,
+    "signed": 0,
+    "unicode-digit": 0
+  },
+  "missing_classes": [
+    "padded",
+    "signed",
+    "overflow",
+    "ascii-digits",
+    "unicode-digit",
+    "numeric-symbol"
+  ],
+  "requests": 8,
+  "disagreements": 0,
+  "new_cases": null,
+  "original_defects": 2,
+  "converged": true,
+  "clean_streak": 2,
+  "rbac_checked": false,
+  "rbac_principals": 0,
+  "rbac_findings": [],
+  "defect_policy": "defect",
+  "confidence": "sampled agreement: a clean round means these inputs agreed, not that every input does",
+  "not_checked": [
+    "inputs outside the probe classes (see the generator in internal/domain/probe.go and fuzzgen.go)",
+    "original behavior that depends on time, randomness, or state from earlier requests",
+    "concurrent requests and their interleavings"
+  ]
+}

@@ -121,7 +121,7 @@ var riskWhyKorean = map[string]string{
 	RiskUnsafeDeserialize: "코드를 실행할 수 있는 역직렬화(pickle)는 Go에 대응물이 없으므로, 데이터 형식 자체를 다시 설계하거나 손으로 디코딩해야 합니다.",
 	RiskConcurrency:       "스레드, 프로세스, 이벤트 루프는 런타임이 고른 순서로 실행되므로, 포팅은 결과만이 아니라 동기화까지 유지해야 합니다.",
 	RiskNetwork:           "소켓과 HTTP는 동작을 다른 기계에 묶으므로, 비교하려면 기록하거나 흉내 내야 합니다.",
-	RiskFSWrite:           "파일 쓰기는 디스크를 바꾸므로, 녹화는 stdout뿐 아니라 쓴 파일까지 담아야 합니다.",
+	RiskFSWrite:           "파일 쓰기는 디스크를 바꾸므로, 기록은 stdout뿐 아니라 쓴 파일까지 담아야 합니다.",
 	RiskNondeterminism:    "시계와 무작위 값은 실행마다 달라지므로, 고치거나 기록해야 원본과 포팅을 비교할 수 있습니다.",
 }
 
@@ -885,9 +885,9 @@ They may be called by tests, by other modules, or only through reflection.</p>
   {{- end}}
 </ul>
 {{- if .IsGo}}
-<p><strong>{{bi "Wave" "웨이브"}}</strong> {{bi "is the depth in the import graph inside the module. Wave 0 imports no other package of the module. A package in wave N imports at least one package of wave N-1 and none of a later wave, so porting wave by wave always has its dependencies done." "는 모듈 안 임포트 그래프에서의 깊이입니다. 웨이브 0은 모듈의 다른 패키지를 임포트하지 않습니다. 웨이브 N의 패키지는 최소한 웨이브 N-1의 패키지 하나를 임포트하고 더 늦은 웨이브는 임포트하지 않으므로, 웨이브별 포팅은 의존성이 항상 먼저 끝나 있습니다."}}</p>
+<p><strong>{{bi "Wave" "이식 순서"}}</strong> {{bi "is the depth in the import graph inside the module. Wave 0 imports no other package of the module. A package in wave N imports at least one package of wave N-1 and none of a later wave, so porting wave by wave always has its dependencies done." "는 모듈 안 임포트 그래프에서의 깊이입니다. 이식 순서 0은 모듈의 다른 패키지를 임포트하지 않습니다. 이식 순서 N의 패키지는 최소한 이식 순서 N-1의 패키지 하나를 임포트하고 더 늦은 이식 순서는 임포트하지 않으므로, 이식 순서대로 포팅하면 의존성이 항상 먼저 끝나 있습니다."}}</p>
 {{- else}}
-<p><strong>{{bi "Wave" "웨이브"}}</strong> {{bi "is the depth in the import graph inside the repo. Wave 0 imports no other module of the repo. A module in wave N imports at least one module of wave N-1. Modules in an import cycle are marked import_cycle; the cycle has to be broken or merged into one Go package, and their wave is only approximate." "는 저장소 안 임포트 그래프에서의 깊이입니다. 웨이브 0은 저장소의 다른 모듈을 임포트하지 않습니다. 웨이브 N의 모듈은 최소한 웨이브 N-1의 모듈 하나를 임포트합니다. 임포트 순환에 있는 모듈은 import_cycle으로 표시되며, 순환은 끊거나 하나의 Go 패키지로 합쳐야 하고 그 웨이브는 근사치입니다."}}</p>
+<p><strong>{{bi "Wave" "이식 순서"}}</strong> {{bi "is the depth in the import graph inside the repo. Wave 0 imports no other module of the repo. A module in wave N imports at least one module of wave N-1. Modules in an import cycle are marked import_cycle; the cycle has to be broken or merged into one Go package, and their wave is only approximate." "는 저장소 안 임포트 그래프에서의 깊이입니다. 이식 순서 0은 저장소의 다른 모듈을 임포트하지 않습니다. 이식 순서 N의 모듈은 최소한 이식 순서 N-1의 모듈 하나를 임포트합니다. 임포트 순환에 있는 모듈은 import_cycle으로 표시되며, 순환은 끊거나 하나의 Go 패키지로 합쳐야 하고 그 이식 순서는 근사치입니다."}}</p>
 <p><strong>{{bi "Go package" "Go 패키지"}}</strong> {{bi "is a suggestion for where the module lands in the rewrite: its path in lower case, with characters Go does not allow in a package name dropped and Go keywords suffixed with pkg. Several small modules may well belong in one Go package instead." "는 재작성에서 그 모듈이 놓일 위치의 제안입니다. 경로를 소문자로 쓰고, Go가 패키지 이름에 허용하지 않는 문자는 빼며, Go 키워드에는 pkg를 분입니다. 작은 모듈 여러 개는 하나의 Go 패키지로 묶는 것이 나을 수도 있습니다."}}</p>
 {{- end}}
 {{- if and .Functions .IsGo}}

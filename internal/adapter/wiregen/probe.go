@@ -320,8 +320,29 @@ func droppedAfterAccept(err error) bool {
 	return errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, syscall.ECONNRESET)
 }
 
+// WireOptions paces and retries the probes sent to the original. The zero value sends each probe once,
+// immediately, which is what every caller that does not ask for the new options gets.
+type WireOptions struct {
+	// Delay waits before each probe, so a fragile original (a single-threaded php -S) is not hammered.
+	Delay time.Duration
+	// Retries is how many times a connection-level failure (refused, timed out) is retried before the
+	// loop reports the error and stops. A connection the original accepted and then dropped is NOT
+	// retried: the drop is the original's answer (a crash on this input) and is classified as NoResponse.
+	Retries int
+	// RetryDelay waits between retries.
+	RetryDelay time.Duration
+}
+
+// retryableWire refuses to retry a connection the original accepted and then dropped: that drop is the
+// original's answer, not a delivery failure. A connection-level failure (refused, timed out) retries.
+func retryableWire(err error) bool {
+	return !droppedAfterAccept(err)
+}
+
 // AskOriginal sends one probe to the original: a program for command-line units, a URL for HTTP units.
-func AskOriginal(kind, originalCLI, originalURL string, probe domain.AppCase) (domain.AppCase, error) {
+// wo applies only to the HTTP original: pacing before each probe and retries on a connection-level
+// failure. A command-line original is a fresh process per probe, so there is nothing to pace or retry.
+func AskOriginal(kind, originalCLI, originalURL string, probe domain.AppCase, wo WireOptions) (domain.AppCase, error) {
 	if kind == "cli" {
 		ctx, cancel := context.WithTimeout(context.Background(), probeTimeout)
 		defer cancel()
@@ -345,7 +366,8 @@ func AskOriginal(kind, originalCLI, originalURL string, probe domain.AppCase) (d
 	}
 	// HTTP probes go through app.Runner, the same request builder the rewrite side uses, so method, path,
 	// body, request headers and default Content-Type are identical on both sides (issue #16).
-	runner := app.Runner{BaseURL: originalURL}
+	runner := app.Runner{BaseURL: originalURL, Delay: wo.Delay, Retries: wo.Retries, RetryDelay: wo.RetryDelay,
+		Retryable: retryableWire}
 	got, err := runner.Do(probe)
 	if err != nil {
 		if droppedAfterAccept(err) {

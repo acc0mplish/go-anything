@@ -32,6 +32,44 @@ type Runner struct {
 	Timeout time.Duration
 	// Argv0 is the program that CLI cases run; each case's Argv replaces the arguments.
 	Argv0 string
+	// Delay waits this long before each HTTP request, so a fragile original (a single-threaded PHP
+	// server) is not hammered by back-to-back cases. Zero sends immediately. The CLI path ignores it.
+	Delay time.Duration
+	// Retries is how many more times an HTTP request that failed on the transport is sent before the
+	// failure is reported. A transport failure is a client.Do error or a body read error; an HTTP status
+	// code is an answer, never a transport failure, so it is never retried. Zero (the default) sends once.
+	Retries int
+	// RetryDelay waits between retries. Zero means the retries run back to back.
+	RetryDelay time.Duration
+	// Retryable decides whether a transport error may be retried. nil retries every transport error.
+	// The wiregen probe passes one that refuses to retry a connection the original accepted and then
+	// dropped: that drop is the original's answer (a crash), not a delivery failure.
+	Retryable func(error) bool
+	// sleep is the wait for Delay and RetryDelay. nil means time.Sleep; a test injects a stub instead of
+	// measuring wall time.
+	sleep func(time.Duration)
+}
+
+// pause waits d through the injected sleeper. Zero and negative waits return at once, so a zero-value
+// Runner never sleeps.
+func (r Runner) pause(d time.Duration) {
+	if d <= 0 {
+		return
+	}
+	if r.sleep != nil {
+		r.sleep(d)
+		return
+	}
+	time.Sleep(d)
+}
+
+// Pacing carries the HTTP pacing and retry settings from a command's flags into a Runner: the wait
+// before each request, the retries on a transport failure, and the wait between those retries. The zero
+// value is the behavior every command had before the settings existed.
+type Pacing struct {
+	Delay      time.Duration
+	Retries    int
+	RetryDelay time.Duration
 }
 
 // Do implements usecase.AppRunner.
@@ -53,36 +91,59 @@ func (r Runner) doHTTP(c domain.AppCase) (domain.AppCase, error) {
 	if client == nil {
 		client = &http.Client{Timeout: DefaultTimeout}
 	}
-	req, err := http.NewRequest(c.Method, strings.TrimRight(r.BaseURL, "/")+c.Path, strings.NewReader(c.Body))
-	if err != nil {
-		return domain.AppCase{}, fmt.Errorf("app: build request: %w", err)
-	}
-	for name, value := range c.RequestHeaders {
-		v, err := expandEnv(value)
+	// A request cannot simply be resent: its body reader is consumed by the first send. Every attempt
+	// builds a fresh request with the same builder steps and the same error texts a zero-value Runner
+	// has always produced.
+	build := func() (*http.Request, error) {
+		req, err := http.NewRequest(c.Method, strings.TrimRight(r.BaseURL, "/")+c.Path, strings.NewReader(c.Body))
 		if err != nil {
-			return domain.AppCase{}, fmt.Errorf("app: header %s: %w", name, err)
+			return nil, fmt.Errorf("app: build request: %w", err)
 		}
-		req.Header.Set(name, v)
+		for name, value := range c.RequestHeaders {
+			v, err := expandEnv(value)
+			if err != nil {
+				return nil, fmt.Errorf("app: header %s: %w", name, err)
+			}
+			req.Header.Set(name, v)
+		}
+		// Servers that parse JSON reject a JSON body sent without its type with 415. A case that names its own
+		// Content-Type keeps it; only an unlabeled body that is valid JSON gets the default.
+		if c.Body != "" && req.Header.Get("Content-Type") == "" && json.Valid([]byte(c.Body)) {
+			req.Header.Set("Content-Type", "application/json")
+		}
+		return req, nil
 	}
-	// Servers that parse JSON reject a JSON body sent without its type with 415. A case that names its own
-	// Content-Type keeps it; only an unlabeled body that is valid JSON gets the default.
-	if c.Body != "" && req.Header.Get("Content-Type") == "" && json.Valid([]byte(c.Body)) {
-		req.Header.Set("Content-Type", "application/json")
+	attempts := max(r.Retries, 0) + 1
+	for attempt := 0; ; attempt++ {
+		if attempt == 0 {
+			r.pause(r.Delay)
+		} else {
+			r.pause(r.RetryDelay)
+		}
+		req, err := build()
+		if err != nil {
+			return domain.AppCase{}, err
+		}
+		resp, err := client.Do(req)
+		if err == nil {
+			body, readErr := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if readErr == nil {
+				out := c
+				out.Status = resp.StatusCode
+				out.ResponseBody = string(body)
+				out.Headers = captureHeaders(resp.Header, headersToCapture(c))
+				return out, nil
+			}
+			// A body that died mid-read is a transport failure, not an answer: it may be retried.
+			err = fmt.Errorf("app: read body: %w", readErr)
+		} else {
+			err = fmt.Errorf("app: %s %s: %w", c.Method, c.Path, err)
+		}
+		if attempt+1 >= attempts || (r.Retryable != nil && !r.Retryable(err)) {
+			return domain.AppCase{}, err
+		}
 	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return domain.AppCase{}, fmt.Errorf("app: %s %s: %w", c.Method, c.Path, err)
-	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return domain.AppCase{}, fmt.Errorf("app: read body: %w", err)
-	}
-	out := c
-	out.Status = resp.StatusCode
-	out.ResponseBody = string(body)
-	out.Headers = captureHeaders(resp.Header, headersToCapture(c))
-	return out, nil
 }
 
 func (r Runner) doCLI(c domain.AppCase) (domain.AppCase, error) {

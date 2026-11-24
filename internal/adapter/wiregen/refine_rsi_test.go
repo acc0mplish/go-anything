@@ -268,7 +268,7 @@ func Handle(w http.ResponseWriter, r *http.Request) { w.Write([]byte(r.Method + 
 		if got[i].ResponseBody != want {
 			t.Errorf("rewrite saw %q, probe was %q", got[i].ResponseBody, want)
 		}
-		a, err := AskOriginal("http", "", srv.URL, p)
+		a, err := AskOriginal("http", "", srv.URL, p, WireOptions{})
 		if err != nil {
 			t.Fatal(err)
 		}

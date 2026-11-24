@@ -27,7 +27,7 @@ func TestOriginalThatDropsTheConnectionIsADefectNotAnError(t *testing.T) {
 		}
 	}()
 	probe := domain.AppCase{Name: "p", Kind: "http", Method: "GET", Path: "/orders/007"}
-	got, err := AskOriginal("http", "", "http://"+ln.Addr().String(), probe)
+	got, err := AskOriginal("http", "", "http://"+ln.Addr().String(), probe, WireOptions{})
 	if err != nil {
 		t.Fatalf("a dropped connection is the original's answer, not a loop error: %v", err)
 	}
@@ -50,7 +50,7 @@ func TestOriginalNotRunningStopsTheLoop(t *testing.T) {
 	addr := ln.Addr().String()
 	ln.Close()
 	probe := domain.AppCase{Name: "p", Kind: "http", Method: "GET", Path: "/orders/1"}
-	if _, err := AskOriginal("http", "", "http://"+addr, probe); err == nil {
+	if _, err := AskOriginal("http", "", "http://"+addr, probe, WireOptions{}); err == nil {
 		t.Fatal("a refused connection means the original is down; it must be an error, not a defect")
 	}
 }

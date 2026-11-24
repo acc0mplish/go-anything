@@ -210,3 +210,109 @@ func TestCompareAnswerNormalizesStderr(t *testing.T) {
 		t.Fatalf("stderr gets the same mask: %v", diffs)
 	}
 }
+
+// TestBuiltinNormalizerMasksPinsTheReplacement fixes, as exact strings, what each new built-in writes
+// into an answer: every mask must keep a JSON answer valid JSON (the key and the quotes survive).
+func TestBuiltinNormalizerMasksPinsTheReplacement(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		norm string
+		out  string
+	}{
+		{
+			"host_urls masks scheme and host, keeps path and query",
+			`{"url": "http://10.0.0.7:8080/orders?page=2"}`,
+			"host_urls",
+			`{"url": "<host_urls>/orders?page=2"}`,
+		},
+		{
+			"host_urls catches slashes escaped by PHP json_encode",
+			`{"link": "https:\/\/api.example.com\/v1"}`,
+			"host_urls",
+			`{"link": "<host_urls>\/v1"}`,
+		},
+		{
+			"counts quotes the mask so the JSON stays valid; a fixed setting is not touched",
+			`{"total": 42, "error_count":3, "per_page": 20}`,
+			"counts",
+			`{"total": "<counts>", "error_count":"<counts>", "per_page": 20}`,
+		},
+		{
+			"tokens re-emits the key with a quoted mask",
+			`{"access_token": "abc123", "refresh_token":"r-2", "user": "kim"}`,
+			"tokens",
+			`{"access_token":"<tokens>", "refresh_token":"<tokens>", "user": "kim"}`,
+		},
+		{
+			"session_ids re-emits the key with its original case",
+			`{"SessionId": "s-1", "session_id": "s-2", "id": "s-3"}`,
+			"session_ids",
+			`{"SessionId":"<session_ids>", "session_id":"<session_ids>", "id": "s-3"}`,
+		},
+		{
+			"oauth keeps separator and parameter name, in URLs and HTML-escaped text",
+			`/next?state=xyz&nonce=abc&x=1 and a&amp;state=efg in HTML`,
+			"oauth",
+			`/next?state=<oauth>&nonce=<oauth>&x=1 and a&amp;state=<oauth> in HTML`,
+		},
+	}
+	for _, c := range cases {
+		got := normalizeForCompare(c.in, mustNormalizers(t, []string{c.norm}))
+		if got != c.out {
+			t.Errorf("%s:\n  got  %s\n  want %s", c.name, got, c.out)
+		}
+	}
+}
+
+// mustNormalizers parses specs or fails the test.
+func mustNormalizers(t *testing.T, specs []string) []normalizer {
+	t.Helper()
+	ns, err := parseNormalizers(specs)
+	if err != nil {
+		t.Fatalf("built-in specs must parse: %v", err)
+	}
+	return ns
+}
+
+// TestCountsMaskKeepsJSONComparisonSemantic pins the interplay the counts mask exists for: after masking,
+// two answers whose counters differ still compare as equal JSON, and the comparison is still semantic
+// (key order and whitespace ignored), not a downgraded text comparison.
+func TestCountsMaskKeepsJSONComparisonSemantic(t *testing.T) {
+	want := `{"total": 5, "items": ["a", "b"]}`
+	got := `{"items":["a","b"],"total":999}`
+	opt := CompareOptions{JSONBody: true, Normalize: []string{"counts"}}
+	if eq, why := EqualBody(want, got, opt); !eq {
+		t.Fatalf("differing counters must compare as equal under counts: %s", why)
+	}
+	// The equal-but-not-identical bytes prove the comparison was JSON semantics: an exact comparison
+	// would fail because key order and whitespace differ.
+	if eq, _ := EqualBody(want, got, CompareOptions{JSONBody: true}); eq {
+		t.Fatal("the unmasked answers must differ (key order and counter), or this test proves nothing")
+	}
+	// A masked answer must still be parseable JSON: masking must not break the structure.
+	gotMasked := normalizeForCompare(want, mustNormalizers(t, []string{"counts"}))
+	if _, err := parseStrictJSON(gotMasked); err != nil {
+		t.Fatalf("the counts mask must keep the answer valid JSON: %v (masked: %s)", err, gotMasked)
+	}
+	if _, err := parseStrictJSON(normalizeForCompare(got, mustNormalizers(t, []string{"counts"}))); err != nil {
+		t.Fatalf("the counts mask must keep the answer valid JSON: %v", err)
+	}
+}
+
+// TestUnknownNormalizerErrorListsBuiltins: the error must name every built-in, generated from the map
+// so a new built-in cannot be missing from the message.
+func TestUnknownNormalizerErrorListsBuiltins(t *testing.T) {
+	_, err := parseNormalizers([]string{"epoch"})
+	if err == nil {
+		t.Fatal("an unknown normalizer must be rejected")
+	}
+	for _, name := range []string{"counts", "host_urls", "oauth", "session_ids", "timestamps", "tokens", "uuids"} {
+		if !strings.Contains(err.Error(), name) {
+			t.Errorf("the unknown-normalizer error must list the built-in %s: %v", name, err)
+		}
+	}
+	if !strings.Contains(err.Error(), "name=regex") {
+		t.Errorf("the error must still say how to ask for a custom mask: %v", err)
+	}
+}

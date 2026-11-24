@@ -71,10 +71,10 @@ func newHTMLView(r Report) htmlView {
 	switch {
 	case r.Stale:
 		v.StaleShort, v.StaleText, v.StaleCls = biHTML("yes", "예"),
-			biHTML("the source changed since the recording", "녹화 이후 소스가 변경되었습니다"), "bad"
+			biHTML("the source changed since the recording", "기록 이후 소스가 변경되었습니다"), "bad"
 	case r.DriftChecked:
 		v.StaleShort, v.StaleText, v.StaleCls = biHTML("no", "아니요"),
-			biHTML("the source still matches the recording", "소스가 녹화와 여전히 일치합니다"), "ok"
+			biHTML("the source still matches the recording", "소스가 기록과 여전히 일치합니다"), "ok"
 	case r.Kind == "unit":
 		v.StaleShort, v.StaleText, v.StaleCls = biHTML("not checked", "확인 안 함"),
 			biHTML("not checked (no source directory given)", "확인 안 함(소스 디렉터리를 지정하지 않음)"), "warn"
@@ -256,7 +256,7 @@ var reportTemplate = template.Must(template.New("report").Funcs(template.FuncMap
 <div class="cards">
   <div class="card {{.MatchCls}}"><div class="k">{{bi "Matched" "일치"}}</div><div class="v">{{.Matched}}/{{.Total}}</div><div class="s">{{.Matched}} of {{.Total}} ({{.MatchRate}})</div></div>
   <div class="card {{if .MismatchCases}}bad{{else}}ok{{end}}"><div class="k">{{bi "Mismatching cases" "불일치 케이스"}}</div><div class="v">{{.MismatchCases}}</div><div class="s">{{len .Diffs}} differing field(s)</div></div>
-  <div class="card {{.StaleCls}}"><div class="k">{{bi "Stale recording" "오래된 녹화"}}</div><div class="v">{{.StaleShort}}</div><div class="s">{{.StaleText}}</div></div>
+  <div class="card {{.StaleCls}}"><div class="k">{{bi "Stale recording" "오래된 기록"}}</div><div class="v">{{.StaleShort}}</div><div class="s">{{.StaleText}}</div></div>
   {{- if .CoverageTxt}}
   <div class="card"><div class="k">{{bi "Original statement coverage" "원본 문장 커버리지"}}</div><div class="v">{{.CoverageTxt}}</div><div class="s">{{bi "of the original's statements reached by the cases" "케이스가 도달한 원본 문장의 비율"}}</div></div>
   {{- end}}

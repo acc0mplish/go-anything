@@ -114,8 +114,14 @@ func CheckRBAC(root, unit string, cases []domain.AppCase, rb RBACOptions, origin
 
 // roundConverged is the convergence decision for one round. A round converges only when the probes agree
 // with the original and no critical authorization finding blocks it. High findings are recorded, not blocking.
-func roundConverged(disagreements int, findings []usecase.Finding) bool {
-	return disagreements == 0 && !usecase.HasCritical(findings)
+// concurrentDiverges blocks too: a rewrite that answers identical concurrent requests differently is a defect
+// the sequential probes did not reach. That blocking rule is a go-anything extension — the ported original
+// keeps its concurrency check outside the convergence loop. The chain check is inside it, per the ported
+// contract: a diverging chain blocks, and so does a chain the run could not judge — "could not tell" is not
+// "matched", and a pending chain must not hide behind a clean-looking round.
+func roundConverged(disagreements int, findings []usecase.Finding, concurrentDiverges, chainDiverges, chainPending int) bool {
+	return disagreements == 0 && !usecase.HasCritical(findings) && concurrentDiverges == 0 &&
+		chainDiverges == 0 && chainPending == 0
 }
 
 // criticalCount counts the critical findings, for the messages that say why a round did not converge.

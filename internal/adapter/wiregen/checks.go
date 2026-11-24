@@ -50,6 +50,35 @@ type RoundCheck struct {
 	ExtraDisagreements []ExtraDisagreement `json:"extra_disagreements,omitempty"`
 	Confidence         string              `json:"confidence"`
 	NotChecked         []string            `json:"not_checked"`
+	// ConcurrentChecked is the number of the unit's recorded cases the concurrent-request check asked
+	// (-concurrency, HTTP units only). 0 means the check did not run, so the record keeps its old shape.
+	ConcurrentChecked int `json:"concurrent_checked,omitempty"`
+	// ConcurrentDiverges is how many of those cases the rewrite answered inconsistently under the
+	// concurrent load. Any entry makes the round not converged. That blocking rule is a go-anything
+	// extension: the ported original treats a divergent rewrite answer as a report item outside the
+	// convergence loop.
+	ConcurrentDiverges int `json:"concurrent_diverges,omitempty"`
+	// ConcurrentPending lists the cases whose verdict stayed uncertain (a failed send, or a
+	// nondeterministic original). Pending does not block convergence; the names stay on the record so a
+	// pending case cannot quietly disappear.
+	ConcurrentPending []string `json:"concurrent_pending,omitempty"`
+	// ChainsChecked is the number of collection targets the consecutive-request check exercised
+	// (-chains, HTTP units only). 0 means the check did not run, so the record keeps its old shape.
+	ChainsChecked int `json:"chains_checked,omitempty"`
+	// ChainRequests is the total number of chain steps the check sent to each side in this round.
+	ChainRequests int `json:"chain_requests,omitempty"`
+	// ChainDiverges is how many chains diverged. Any divergence makes the round not converged, per the
+	// ported contract.
+	ChainDiverges int `json:"chain_diverges,omitempty"`
+	// ChainFirstDivergence is the step index, counted from 1, of the first divergence in the first
+	// diverging chain; 0 records nothing (which is why the count is 1-based: an omitempty field must
+	// stay out of records that did not diverge, and divergence at step 0 would otherwise vanish).
+	ChainFirstDivergence int `json:"chain_first_divergence,omitempty"`
+	// ChainPending lists the collection targets whose chain the check could not judge (a failed send,
+	// or a 5xx or step-count surprise from the original). An uncertain chain verdict does block
+	// convergence, unlike a concurrent one — that is the ported contract — and the names stay on the
+	// record so a pending target cannot quietly disappear.
+	ChainPending []string `json:"chain_pending,omitempty"`
 }
 
 // ExtraDisagreement is one extra input where the answers differ. Want and Got are short, clipped
@@ -66,6 +95,40 @@ var notCheckedCommon = []string{
 	"inputs outside the probe classes (see the generator in internal/domain/probe.go and fuzzgen.go)",
 	"original behavior that depends on time, randomness, or state from earlier requests",
 	"concurrent requests and their interleavings",
+}
+
+const (
+	// concurrentInterleavingsNote is the line of notCheckedCommon the concurrent check narrows.
+	concurrentInterleavingsNote = "concurrent requests and their interleavings"
+	// notCheckedConcurrentOn replaces that line for a round that ran the concurrent check: identical-request
+	// consistency was checked for this unit's recorded cases, so only interleavings of distinct requests
+	// remain unchecked. A round without the check keeps the common line, so its record stays byte-identical.
+	notCheckedConcurrentOn = "identical-request consistency checked for this unit's recorded cases; distinct-request interleavings remain unexplored"
+	// chainStateNote is the line of notCheckedCommon the chain check narrows.
+	chainStateNote = "original behavior that depends on time, randomness, or state from earlier requests"
+	// notCheckedChainOn replaces that line for a round that ran the chain check: state built from
+	// earlier requests was exercised, but only through the check's own reserved-name resources on
+	// recorded collections, so the honest claim is "partially covered".
+	notCheckedChainOn = "state from earlier requests only partially covered — chain probes touch their own reserved-name resources on recorded collections; verbs not seen in the recording are not exercised; list reads and cross-resource interactions against accumulated original state are not checked"
+)
+
+// notCheckedList returns the not_checked list for one round. A round that ran a check narrows only
+// that check's line; every other line keeps the common wording.
+func notCheckedList(concurrentOn, chainOn bool) []string {
+	if !concurrentOn && !chainOn {
+		return notCheckedCommon
+	}
+	out := make([]string, 0, len(notCheckedCommon))
+	for _, s := range notCheckedCommon {
+		if concurrentOn && s == concurrentInterleavingsNote {
+			s = notCheckedConcurrentOn
+		}
+		if chainOn && s == chainStateNote {
+			s = notCheckedChainOn
+		}
+		out = append(out, s)
+	}
+	return out
 }
 
 // classCoverage counts the values in each input class. Every class in domain.ProbeClasses has a key,

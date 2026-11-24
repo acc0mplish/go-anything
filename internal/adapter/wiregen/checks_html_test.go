@@ -202,7 +202,7 @@ func koreanFor(page, en string) string {
 func TestRefinePageIsBilingual(t *testing.T) {
 	page := renderPage(t, BuildRefineReport("greet", allClassesTried(syntheticRounds(5, 0, 0)), nil, "2026-01-02 03:04:05 UTC", 0))
 	tests := []struct{ name, en, ko string }{
-		{"banner verdict", "Converged after 2 consecutive clean rounds (seeds 12 and 13)", "연속 2개 통과 라운드 후 수렴 (seeds 12 and 13)"},
+		{"banner verdict", "Converged after 2 consecutive clean rounds (seeds 12 and 13)", "연속 2개 통과 라운드 후 일치 완료 (seeds 12 and 13)"},
 		{"not checked heading", "Not checked", "확인하지 않은 항목"},
 		{"defects heading", "Original defects", "원본 결함"},
 		{"classes heading", "Value classes", "값 클래스"},

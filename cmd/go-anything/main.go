@@ -77,7 +77,7 @@ Usage:
   go-anything profile -url <base> -cases <app.json> [-seconds 10] [-bin <binary>] [-cpuprofile <file>]
       Profiles a running service: fetches its CPU profile from /debug/pprof/profile (the service must import
       net/http/pprof) while the app cases replay against it, then ranks the functions the same way.
-  go-anything app record -cases <cases.json> -o <app.json> (-base <url> | -cli <program>) [-repeat 2] [-strict] [-webhooks addr] [-mail addr] [-db ... -tables a,b [-tenant <id>]]
+  go-anything app record -cases <cases.json> -o <app.json> (-base <url> | -cli <program>) [-repeat 2] [-strict] [-delay-ms N] [-retries N] [-retry-delay-ms N] [-webhooks addr] [-mail addr] [-db ... -tables a,b [-tenant <id>]]
       Records a whole program: each case is an HTTP request or a CLI invocation; the answer is saved.
   go-anything app replay <app.json> (-base <url> | -cli <program>) [-db ... -tables ... [-tenant <id>]]
       Sends every recorded request again. Exits non-zero unless every answer matches.
@@ -87,7 +87,7 @@ Usage:
       main.go, and checks that the module builds. If the build fails, main.go is restored unchanged.
       The rewrite is a placeholder that gate refuses. Each unit serves the original (through GA_ORIGINAL_URL)
       until GA_UNIT_<NAME>=rewrite is set. Never overwrites an existing unit or a hand-written registry.
-  go-anything wire refine <module root> <unit> [prefix] -cases app.json (-original-cli BIN | -original-url URL) [-agent CMD] [-rounds 4] [-probes 40] [-max-new 20] [-rbac-principals FILE -rbac-policy FILE]
+  go-anything wire refine <module root> <unit> [prefix] -cases app.json (-original-cli BIN | -original-url URL | -serve-original CMD) [-agent CMD] [-rounds 4] [-probes 40] [-max-new 20] [-delay-ms N] [-retries N] [-retry-delay-ms N] [-concurrency N] [-chains N] [-original-start-timeout SEC] [-rbac-principals FILE -rbac-policy FILE]
       Probes the rewrite with fresh inputs against the original. Every input where they disagree is recorded with
       the original's answer; the unit's test is regenerated and the agent fixes the rewrite. Stops when a round
       finds no disagreement.
@@ -416,14 +416,46 @@ func compareFlags(fs *flag.FlagSet) func(cmd string) (domain.CompareOptions, err
 	jsonBody := fs.Bool("json-body", false, "compare HTTP bodies, CLI stdout and unit outputs as JSON when both sides parse: key order and whitespace ignored, arrays ordered, numbers by exact decimal value")
 	tol := fs.Float64("float-tolerance", 0, "numbers (in JSON answers with -json-body, and lines that are a single number) may differ by this much, absolute or relative; 0 is exact")
 	var norms unitFlags
-	fs.Var(&norms, "normalize", "mask volatile values on both sides before comparing: timestamps, uuids, or name=regex (repeatable); a differing clock reading or fresh UUID then compares as equal")
+	fs.Var(&norms, "normalize", "mask volatile values on both sides before comparing: timestamps, uuids, host_urls, counts, tokens, session_ids, oauth, or name=regex (repeatable); built-in names may be listed comma-separated in one value, while a name=regex that contains commas is read as one spec; a differing clock reading, fresh UUID or fresh session token then compares as equal, and every built-in keeps a JSON answer valid")
 	return func(cmd string) (domain.CompareOptions, error) {
-		opt := domain.CompareOptions{JSONBody: *jsonBody, FloatTolerance: *tol, Normalize: norms}
+		opt := domain.CompareOptions{JSONBody: *jsonBody, FloatTolerance: *tol, Normalize: splitNormalizeSpecs(norms)}
 		if err := opt.Validate(); err != nil {
 			return domain.CompareOptions{}, fmt.Errorf("%s: %v", cmd, err)
 		}
 		return opt, nil
 	}
+}
+
+// splitNormalizeSpecs turns the -normalize flag values into normalizer specs. A comma-separated piece
+// that names a built-in normalizer becomes its own spec ("counts,host_urls"); any other piece is
+// re-joined to the spec before it with its comma back, so a custom regex that contains commas is read
+// as one spec and keeps its meaning ("thousands=^[0-9]{1,3}(,[0-9]{3})*$", "re=a,b=c"). A value whose
+// first piece is not a built-in name starts as one custom spec, and "timestamps,uuids,re=a,b" is three
+// specs, the last still holding its comma.
+func splitNormalizeSpecs(values []string) []string {
+	var out []string
+	for _, v := range values {
+		cur := ""
+		for _, part := range strings.Split(v, ",") {
+			part = strings.TrimSpace(part)
+			switch {
+			case domain.IsBuiltinNormalizer(part):
+				if cur != "" {
+					out = append(out, cur)
+					cur = ""
+				}
+				out = append(out, part)
+			case cur == "":
+				cur = part
+			default:
+				cur += "," + part
+			}
+		}
+		if cur != "" {
+			out = append(out, cur)
+		}
+	}
+	return out
 }
 
 // printAppMismatch prints one difference. When the comparison named the first difference (a JSON path
@@ -869,13 +901,15 @@ func pkgOf(name string) string {
 	return name[:slash+1+dot]
 }
 
-// appRunner builds the runner for -base (HTTP server) or -cli (command-line program).
-func appRunner(base, cli string) (usecase.AppRunner, error) {
+// appRunner builds the runner for -base (HTTP server) or -cli (command-line program). pacing applies to
+// the HTTP path only (a wait before each request and retries on a transport failure); a command-line
+// program is a fresh process per case, so there is nothing to pace or retry.
+func appRunner(base, cli string, pacing app.Pacing) (usecase.AppRunner, error) {
 	switch {
 	case base != "" && cli != "":
 		return nil, errors.New("app: give -base or -cli, not both")
 	case base != "":
-		return app.Runner{BaseURL: base}, nil
+		return app.Runner{BaseURL: base, Delay: pacing.Delay, Retries: pacing.Retries, RetryDelay: pacing.RetryDelay}, nil
 	case cli != "":
 		return app.Runner{Argv0: cli}, nil
 	}
@@ -928,6 +962,9 @@ func cmdAppRecord(args []string, stdout io.Writer) error {
 	dbReset := fs.String("db-reset", "", "SQL file run against -db before EVERY case (destructive; needs -allow-db-write; scratch databases only)")
 	dbDump := fs.String("db-dump", "", "write the final state of -tables to this JSON file (read-only)")
 	allowWrite := fs.Bool("allow-db-write", false, "allow -db-reset to change data")
+	delayMs := fs.Int("delay-ms", 0, "wait before each request, so a fragile server is not hammered by back-to-back cases")
+	retries := fs.Int("retries", 0, "retry a request that fails on the transport (connection refused, reset, body read) this many times; an HTTP status is an answer and is never retried")
+	retryDelayMs := fs.Int("retry-delay-ms", 1500, "wait between retries")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -942,7 +979,11 @@ func cmdAppRecord(args []string, stdout io.Writer) error {
 	if err := json.Unmarshal(data, &in); err != nil {
 		return fmt.Errorf("app record: parse cases: %w", err)
 	}
-	runner, err := appRunner(*base, *cli)
+	runner, err := appRunner(*base, *cli, app.Pacing{
+		Delay:      time.Duration(*delayMs) * time.Millisecond,
+		Retries:    *retries,
+		RetryDelay: time.Duration(*retryDelayMs) * time.Millisecond,
+	})
 	if err != nil {
 		return err
 	}
@@ -1015,7 +1056,9 @@ func cmdAppReplay(args []string, stdout io.Writer) error {
 			return fmt.Errorf("app replay: %s: %w", pos[0], err)
 		}
 	}
-	runner, err := appRunner(*base, *cli)
+	// Replay has no pacing or retry flags: a send that fails on the rewrite side stays a mismatch,
+	// counted like any other difference.
+	runner, err := appRunner(*base, *cli, app.Pacing{})
 	if err != nil {
 		return err
 	}
@@ -1543,6 +1586,8 @@ func cmdWireRefine(args []string, stdout io.Writer) error {
 	cases := fs.String("cases", "", "app recording of this unit (required); new cases are added to it")
 	originalCLI := fs.String("original-cli", "", "command-line unit: the original program")
 	originalURL := fs.String("original-url", "", "HTTP unit: the original service URL")
+	serveOriginal := fs.String("serve-original", "", "HTTP unit: start the original fresh at the top of every round with this shell command and stop it when the round ends, so the original's own earlier-round state never colors a verdict; {{port}} in the command is replaced by the port this tool picks. The original inherits the whole environment on purpose and runs in this tool's working directory. Give this or -original-url, not both")
+	originalStartTimeout := fs.Int("original-start-timeout", 60, "seconds to wait for a -serve-original original to answer its first HTTP request before the start fails")
 	rounds := fs.Int("rounds", 4, "most probe rounds")
 	probes := fs.Int("probes", 40, "values tried per round")
 	maxNew := fs.Int("max-new", 20, "most new cases recorded per round")
@@ -1553,6 +1598,11 @@ func cmdWireRefine(args []string, stdout io.Writer) error {
 	rbacPrincipals := fs.String("rbac-principals", "", "HTTP unit: principal file (JSON array); with -rbac-policy, convergence also needs a clean authorization check")
 	rbacPolicy := fs.String("rbac-policy", "", "HTTP unit: declared access policy file (JSON array); needs -rbac-principals")
 	extraInputs := fs.String("extra-inputs", "", "file of values outside the probe generator (one per line, or a JSON array of strings); probed on both sides after convergence, and any disagreement fails the run")
+	delayMs := fs.Int("delay-ms", 0, "HTTP unit: wait before each probe to the original, so a fragile original is not hammered by back-to-back probes")
+	retries := fs.Int("retries", 0, "HTTP unit: retry a connection-level failure to reach the original this many times; a connection the original accepted and then dropped is the original's answer and is never retried")
+	retryDelayMs := fs.Int("retry-delay-ms", 1500, "HTTP unit: wait between retries")
+	concurrency := fs.Int("concurrency", 0, "HTTP unit: fire each recorded case this many times at once at the original and the rewrite after the probes agree; a rewrite that answers identical concurrent requests differently is not converged. 0 skips the check")
+	chains := fs.Int("chains", 0, "HTTP unit: after the probes agree, walk a reserved chain-rN resource through create, read, mutate and delete on each of at most N recorded collections, comparing the two sides step by step; a divergence or an unjudgeable chain is not converged. 0 skips the check")
 	compareOpts := compareFlags(fs)
 	pos, err := parseInterspersed(fs, args)
 	if err != nil {
@@ -1564,6 +1614,27 @@ func cmdWireRefine(args []string, stdout io.Writer) error {
 	prefix := ""
 	if len(pos) == 3 {
 		prefix = pos[2]
+	}
+	if *concurrency < 0 {
+		return errors.New("wire refine: -concurrency must be 0 or more")
+	}
+	if *concurrency > 0 && prefix == "" {
+		return errors.New("wire refine: -concurrency applies to HTTP units only; unit " + pos[1] + " is a command-line unit")
+	}
+	if *chains < 0 {
+		return errors.New("wire refine: -chains must be 0 or more")
+	}
+	if *chains > 0 && prefix == "" {
+		return errors.New("wire refine: -chains applies to HTTP units only; unit " + pos[1] + " is a command-line unit")
+	}
+	if *serveOriginal != "" && *originalURL != "" {
+		return errors.New("wire refine: give one of -original-url or -serve-original")
+	}
+	if *serveOriginal != "" && prefix == "" {
+		return errors.New("wire refine: -serve-original applies to HTTP units only; unit " + pos[1] + " is a command-line unit")
+	}
+	if *originalStartTimeout <= 0 {
+		return errors.New("wire refine: -original-start-timeout must be a positive number of seconds")
 	}
 	if *cases == "" {
 		return errors.New("wire refine: -cases is required")
@@ -1625,6 +1696,10 @@ func cmdWireRefine(args []string, stdout io.Writer) error {
 		Rounds: *rounds, Probes: *probes, MaxNew: *maxNew, Seed: *seed,
 		Agent: *agentCmd, Attempts: *attempts, Log: stdout,
 		RBAC: rbac, ExtraInputs: extra, Compare: cmpOpt,
+		Delay:   time.Duration(*delayMs) * time.Millisecond,
+		Retries: *retries, RetryDelay: time.Duration(*retryDelayMs) * time.Millisecond,
+		Concurrency: *concurrency, Chains: *chains,
+		ServeOriginal: *serveOriginal, OriginalStartTimeout: time.Duration(*originalStartTimeout) * time.Second,
 	})
 	if err != nil {
 		return err

@@ -84,7 +84,7 @@ func registerExtraTools(srv *mcp.Server) {
 			if err != nil {
 				return "", err
 			}
-			runner, err := appRunner(a.Base, a.CLI)
+			runner, err := appRunner(a.Base, a.CLI, app.Pacing{})
 			if err != nil {
 				return "", err
 			}

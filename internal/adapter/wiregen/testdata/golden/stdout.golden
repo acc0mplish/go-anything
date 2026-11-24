@@ -1,0 +1,6 @@
+round 1: 8 probes, 0 disagree with the original, 0 new case(s) recorded, 2 original defect(s) found
+rsi page: <root>/.go-anything/checks/orders/index.html
+round 1 is clean (streak 1 of 2). One more clean round on a fresh seed is needed.
+round 2: 8 probes, 0 disagree with the original, 0 new case(s) recorded, 2 original defect(s) found
+rsi page: <root>/.go-anything/checks/orders/index.html
+converged after 2 consecutive clean rounds (seeds 2 and 3). The rewrite agrees with the original on all 8 probes in each round; authorization not checked (no -rbac-principals and -rbac-policy were given). Not checked: [inputs outside the probe classes (see the generator in internal/domain/probe.go and fuzzgen.go) original behavior that depends on time, randomness, or state from earlier requests concurrent requests and their interleavings]

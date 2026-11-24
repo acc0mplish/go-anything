@@ -29,6 +29,9 @@ type RefineReport struct {
 	// IgnoredRounds counts round records that cannot belong to this run: files older than this run's
 	// round 1, or rounds after the one that converged. The page says how many were left out.
 	IgnoredRounds int
+	// ChainFiles are the base names of the chain transcript files in the checks directory (chain-round-*.json,
+	// written by -chains runs). The page links to them; their bodies never enter the page.
+	ChainFiles []string
 }
 
 // BuildRefineReport assembles the report from decoded round records and defects. It is pure: the caller
@@ -96,34 +99,34 @@ func refineBanner(r RefineReport) (class, verdict, detail string, next []string)
 		seeds := seedsText(r.Rounds, n)
 		if n == 1 {
 			return "warn",
-				Bi("1 clean round ("+seeds+"), not yet converged", "1개 라운드 통과 ("+seeds+"), 아직 수렴하지 않았습니다"),
-				Bi("The rewrite agreed with the original on the sampled inputs of one seed only. Convergence needs 2 consecutive clean rounds on different seeds.", "재작성이 한 시드의 표본 입력에서만 원본과 일치했습니다. 수렴에는 서로 다른 시드에서 연속 2개의 통과 라운드가 필요합니다."),
+				Bi("1 clean round ("+seeds+"), not yet converged", "1개 라운드 통과 ("+seeds+"), 아직 일치 완료 단계가 아닙니다"),
+				Bi("The rewrite agreed with the original on the sampled inputs of one seed only. Convergence needs 2 consecutive clean rounds on different seeds.", "재작성이 한 시드의 표본 입력에서만 원본과 일치했습니다. 일치 완료에는 서로 다른 시드에서 연속 2개의 통과 라운드가 필요합니다."),
 				addDefect([]string{Bi("Rerun with -rounds 2 or more so a second fresh seed is checked.", "두 번째 새 시드가 확인되도록 -rounds 2 이상으로 다시 실행하세요.")})
 		}
 		detail := Bi(
 			fmt.Sprintf("The rewrite agreed with the original on every probe in each of those rounds (%d probes in the last round). This is sampled agreement, not proof for every input: see Not checked.", last.Requests),
-			fmt.Sprintf("재작성이 해당 라운드 각각의 모든 탐침에서 원본과 일치했습니다 (마지막 라운드에 탐침 %d개). 이것은 표본 일치이지 모든 입력에 대한 증명이 아닙니다: 확인하지 않은 항목을 보세요.", last.Requests))
+			fmt.Sprintf("재작성이 해당 라운드 각각의 모든 점검 요청에서 원본과 일치했습니다 (마지막 라운드에 점검 요청 %d개). 이것은 표본 일치이지 모든 입력에 대한 증명이 아닙니다: 확인하지 않은 항목을 보세요.", last.Requests))
 		// A green banner over untried input classes overstates the evidence, so missing classes lower it.
 		if miss := len(last.MissingClasses); miss > 0 {
 			detail = Bi(
 				fmt.Sprintf("The rewrite agreed on every probe, but %d of %d input classes got no probe value (%s), so the agreement says nothing about them.", miss, len(last.ValueClasses), strings.Join(last.MissingClasses, ", ")),
-				fmt.Sprintf("재작성이 모든 탐침에서 일치했지만 입력 클래스 %d개 중 %d개에 탐침 값이 없습니다 (%s). 따라서 그 클래스에 대해서는 이 일치가 아무것도 말해 주지 않습니다.", len(last.ValueClasses), miss, strings.Join(last.MissingClasses, ", ")))
+				fmt.Sprintf("재작성이 모든 점검 요청에서 일치했지만 입력 클래스 %d개 중 %d개에 점검 요청 값이 없습니다 (%s). 따라서 그 클래스에 대해서는 이 일치가 아무것도 말해 주지 않습니다.", len(last.ValueClasses), miss, strings.Join(last.MissingClasses, ", ")))
 			return "warn",
 				Bi(fmt.Sprintf("Converged after %d consecutive clean rounds (%s), with untried input classes", n, seeds),
-					fmt.Sprintf("연속 %d개 통과 라운드 후 수렴 (%s), 시도하지 않은 입력 클래스가 있습니다", n, seeds)),
+					fmt.Sprintf("연속 %d개 통과 라운드 후 일치 완료 (%s), 시도하지 않은 입력 클래스가 있습니다", n, seeds)),
 				detail, addDefect([]string{Bi("Rerun with a larger -probes so every input class gets a value.", "모든 입력 클래스가 값을 갖도록 -probes를 크게 하여 다시 실행하세요.")})
 		}
 		return "pass",
 			Bi(fmt.Sprintf("Converged after %d consecutive clean rounds (%s)", n, seeds),
-				fmt.Sprintf("연속 %d개 통과 라운드 후 수렴 (%s)", n, seeds)),
+				fmt.Sprintf("연속 %d개 통과 라운드 후 일치 완료 (%s)", n, seeds)),
 			detail, addDefect(nil)
 	}
 	if n := len(last.ExtraDisagreements); n > 0 {
 		return "fail",
 			Bi(fmt.Sprintf("Not converged: %d extra input request(s) disagree after the probes converged in round %d", n, last.Round),
-				fmt.Sprintf("미수렴: 탐침이 라운드 %d에서 수렴한 뒤 추가 입력 요청 %d개가 불일치합니다", last.Round, n)),
+				fmt.Sprintf("불일치 잔존: 점검 요청은 라운드 %d까지 일치했지만 추가 입력 요청 %d개가 불일치합니다", last.Round, n)),
 			Bi(fmt.Sprintf("The probes agreed for %d consecutive round(s), but values from -extra-inputs, outside the probe generator, found a difference. See Extra inputs.", last.CleanStreak),
-				fmt.Sprintf("탐침은 %d개 라운드 연속으로 일치했지만, 탐침 생성기 밖의 -extra-inputs 값이 차이를 찾았습니다. 추가 입력을 보세요.", last.CleanStreak)),
+				fmt.Sprintf("점검 요청은 %d개 라운드 연속으로 일치했지만, 점검 요청 생성기 밖의 -extra-inputs 값이 차이를 찾았습니다. 추가 입력을 보세요.", last.CleanStreak)),
 			addDefect([]string{Bi("Read the extra input disagreements below. Record them as cases or fix units/"+r.Unit+"/rewrite.go, then rerun refine.",
 				"아래 추가 입력 불일치를 읽으세요. 케이스로 기록하거나 units/"+r.Unit+"/rewrite.go를 수정한 뒤 refine을 다시 실행하세요.")})
 	}
@@ -131,7 +134,7 @@ func refineBanner(r RefineReport) (class, verdict, detail string, next []string)
 		steps := []string{agentStep(last, r.Unit)}
 		return "fail",
 			Bi(fmt.Sprintf("Not converged: %d disagreement(s) with the original in round %d", last.Disagreements, last.Round),
-				fmt.Sprintf("미수렴: 라운드 %d에서 원본과 %d건이 불일치합니다", last.Round, last.Disagreements)),
+				fmt.Sprintf("불일치 잔존: 라운드 %d에서 원본과 %d건이 불일치합니다", last.Round, last.Disagreements)),
 			Bi(fmt.Sprintf("%d new case(s) were recorded in that round. The clean streak is 0 of 2.", len(last.NewCases)),
 				fmt.Sprintf("그 라운드에서 새 케이스 %d개가 기록되었습니다. 연속 통과는 2회 중 0회입니다.", len(last.NewCases))),
 			addDefect(steps)
@@ -139,14 +142,14 @@ func refineBanner(r RefineReport) (class, verdict, detail string, next []string)
 	if c := criticalCount(last.RBACFindings); c > 0 {
 		return "fail",
 			Bi(fmt.Sprintf("Not converged: %d critical authorization finding(s) in round %d", c, last.Round),
-				fmt.Sprintf("미수렴: 라운드 %d에서 치명적 권한 검사 결과가 %d건 있습니다", last.Round, c)),
-			Bi("The probes agreed, but the authorization check found the rewrite answering against the declared policy.", "탐침은 일치했지만, 권한 검사가 재작성이 선언된 정책에 어긋나게 응답함을 찾았습니다."),
+				fmt.Sprintf("불일치 잔존: 라운드 %d에서 치명적 권한 검사 결과가 %d건 있습니다", last.Round, c)),
+			Bi("The probes agreed, but the authorization check found the rewrite answering against the declared policy.", "점검 요청은 일치했지만, 권한 검사가 재작성이 선언된 정책에 어긋나게 응답함을 찾았습니다."),
 			addDefect([]string{Bi("Read the authorization findings below.", "아래 권한 검사 결과를 읽으세요."), agentStep(last, r.Unit)})
 	}
 	return "warn",
 		Bi(fmt.Sprintf("Not converged yet: clean streak %d of 2 after round %d", last.CleanStreak, last.Round),
-			fmt.Sprintf("아직 미수렴: 라운드 %d 이후 연속 통과는 2회 중 %d회입니다", last.Round, last.CleanStreak)),
-		Bi("The last round was clean, but convergence needs two consecutive clean rounds on fresh seeds.", "마지막 라운드는 통과했지만, 수렴에는 새 시드에서 연속으로 두 라운드를 통과해야 합니다."),
+			fmt.Sprintf("아직 불일치 잔존: 라운드 %d 이후 연속 통과는 2회 중 %d회입니다", last.Round, last.CleanStreak)),
+		Bi("The last round was clean, but convergence needs two consecutive clean rounds on fresh seeds.", "마지막 라운드는 통과했지만, 일치 완료에는 새 시드에서 연속으로 두 라운드를 통과해야 합니다."),
 		addDefect([]string{Bi("Run more rounds (-rounds) so another fresh seed is checked. If the run is still going, reload this page after the next round.",
 			"다른 새 시드가 확인되도록 라운드를 더 실행하세요 (-rounds). 실행이 계속되고 있다면 다음 라운드 뒤에 이 페이지를 다시 여세요.")})
 }
@@ -212,7 +215,10 @@ func defectReason(d usecase.OriginalDefect) string {
 }
 
 type pageCard struct {
-	Key               template.HTML
+	Key template.HTML
+	// Href, when set, turns the card's value into a link to a file that sits next to this page in the
+	// checks directory (a relative link, so the page stays self-contained apart from its own files).
+	Href              string
 	Value, Sub, Class string
 }
 
@@ -403,6 +409,50 @@ func buildPage(r RefineReport) refinePage {
 		{Key: biTitle("Original defects", "원본 결함"), Value: fmt.Sprint(p.DefectCount), Sub: "reported, not recorded", Class: defClass},
 		rbacCard,
 	}
+	// The concurrent check shows one count card, and only for a round that ran it: a run without
+	// -concurrency keeps the page it always had. Counts and case names only — no response body from any
+	// racing request reaches the page.
+	if last.ConcurrentChecked > 0 {
+		class := "ok"
+		if last.ConcurrentDiverges > 0 {
+			class = "bad"
+		} else if len(last.ConcurrentPending) > 0 {
+			class = "warn"
+		}
+		p.Cards = append(p.Cards, pageCard{Key: biTitle("Concurrent check", "동시 요청 점검"),
+			Value: fmt.Sprint(last.ConcurrentChecked),
+			Sub:   fmt.Sprintf("%d case(s) asked, %d diverge, %d pending", last.ConcurrentChecked, last.ConcurrentDiverges, len(last.ConcurrentPending)),
+			Class: class})
+	}
+	// The chain check shows one count card, and only for a round that ran it. It links to the round's
+	// chain transcript file — counts and file names only, never a request or response body: the
+	// transcripts stay in the files the page links to.
+	if last.ChainsChecked > 0 {
+		class := "ok"
+		if last.ChainDiverges > 0 {
+			class = "bad"
+		} else if len(last.ChainPending) > 0 {
+			class = "warn"
+		}
+		main := fmt.Sprintf("chain-round-%02d.json", last.Round)
+		extra := len(r.ChainFiles)
+		for _, f := range r.ChainFiles {
+			if f == main {
+				extra--
+			}
+		}
+		sub := fmt.Sprintf("%d target(s), %d request(s) per side, %d diverge, %d pending — transcript %s", last.ChainsChecked, last.ChainRequests, last.ChainDiverges, len(last.ChainPending), main)
+		if extra > 0 {
+			sub += fmt.Sprintf(" (+%d per-target file(s))", extra)
+		}
+		card := pageCard{Key: biTitle("Chain probes", "연속 요청 점검"), Value: fmt.Sprint(last.ChainsChecked), Sub: sub, Class: class}
+		for _, f := range r.ChainFiles {
+			if f == main {
+				card.Href = f
+			}
+		}
+		p.Cards = append(p.Cards, card)
+	}
 
 	// Classes in ProbeClasses order, then any other recorded class. A class with no value is missing.
 	missing := map[string]bool{}
@@ -537,7 +587,26 @@ func LoadRefineReport(root, unit, defectsPath string, now time.Time) (RefineRepo
 			}
 		}
 	}
-	return BuildRefineReport(unit, rounds, defects, now.UTC().Format("2006-01-02 15:04:05 UTC"), ignored), nil
+	r := BuildRefineReport(unit, rounds, defects, now.UTC().Format("2006-01-02 15:04:05 UTC"), ignored)
+	r.ChainFiles = loadChainFiles(root, unit)
+	return r, nil
+}
+
+// loadChainFiles lists the chain transcript file names in a unit's checks directory, sorted. The page
+// links to them by base name; it never opens them, so no recorded answer reaches the page. A directory
+// that holds no chain files (an option-off run) yields nil.
+func loadChainFiles(root, unit string) []string {
+	dir := filepath.Join(root, ".go-anything", "checks", unit)
+	paths, err := filepath.Glob(filepath.Join(dir, "chain-round-*.json"))
+	if err != nil {
+		return nil
+	}
+	sort.Strings(paths)
+	out := make([]string, 0, len(paths))
+	for _, p := range paths {
+		out = append(out, filepath.Base(p))
+	}
+	return out
 }
 
 // WriteRefineHTML rebuilds <root>/.go-anything/checks/<unit>/index.html from the files on disk. The page
@@ -624,13 +693,13 @@ var refineTemplate = template.Must(template.New("refine").Funcs(refineFuncs).Par
 </div>
 
 <div class="cards">
-{{range .Cards}}  <div class="card {{.Class}}"><div class="k">{{.Key}}</div><div class="v">{{.Value}}</div><div class="s">{{.Sub}}</div></div>
+{{range .Cards}}  <div class="card {{.Class}}"><div class="k">{{.Key}}</div><div class="v">{{if .Href}}<a href="{{.Href}}">{{.Value}}</a>{{else}}{{.Value}}{{end}}</div><div class="s">{{.Sub}}</div></div>
 {{end}}</div>
 
 <h2 id="rounds">Rounds</h2>
 {{if .Rounds}}<p class="note">Disagreements by round: <span class="trend">{{.Trend}}</span>. A clean round has no disagreement and no critical authorization finding. Original defects are counted for the whole run.</p>
 <table class="rounds">
-<tr><th class="num">{{bi "Round" "라운드"}}</th><th class="num">{{bi "Seed" "시드"}}</th><th class="num">{{bi "Probes" "탐침"}}</th><th>{{bi "Disagreements" "불일치"}}</th><th class="num">{{bi "New cases" "새 케이스"}}</th><th class="num">{{bi "Original defects" "원본 결함"}}</th><th class="num">{{bi "Clean streak" "연속 통과"}}</th><th>{{bi "Agent outcome" "에이전트 결과"}}</th><th>{{bi "Confidence" "확신도"}}</th></tr>
+<tr><th class="num">{{bi "Round" "라운드"}}</th><th class="num">{{bi "Seed" "시드"}}</th><th class="num">{{bi "Probes" "점검 요청"}}</th><th>{{bi "Disagreements" "불일치"}}</th><th class="num">{{bi "New cases" "새 케이스"}}</th><th class="num">{{bi "Original defects" "원본 결함"}}</th><th class="num">{{bi "Clean streak" "연속 통과"}}</th><th>{{bi "Agent outcome" "에이전트 결과"}}</th><th>{{bi "Confidence" "확신도"}}</th></tr>
 {{range .Rounds}}<tr class="{{.RowVerdict}}">
   <td class="num">{{.Round}}{{if .Converged}}<div>{{if ge .Streak 2}}<span class="badge ok">converged</span>{{else}}<span class="badge warn">stopped after 1 round</span>{{end}}</div>{{end}}</td>
   <td class="num">{{.Seed}}</td>
@@ -676,11 +745,11 @@ var refineTemplate = template.Must(template.New("refine").Funcs(refineFuncs).Par
 {{end}}</table>{{end}}{{else}}<p><span class="badge warn">not checked</span> The authorization check did not run in this round. It runs only on HTTP units with -rbac-principals and -rbac-policy, and only where the probes agree.</p>{{end}}
 
 <h2 id="not-checked">{{bi "Not checked" "확인하지 않은 항목"}}</h2>
-<p class="note">{{bi "The limit of the convergence claim. Agreement on sampled probes does not cover these." "수렴 주장의 한계입니다. 표본 탐침과의 일치가 이 항목들을 뒷받침하지는 않습니다."}}</p>
+<p class="note">{{bi "The limit of the convergence claim. Agreement on sampled probes does not cover these." "일치 완료 주장의 한계입니다. 표본 점검 요청과의 일치가 이 항목들을 뒷받침하지는 않습니다."}}</p>
 {{if .NotChecked}}<ul>{{range .NotChecked}}<li>{{.}}</li>{{end}}</ul>{{else}}<p><span class="badge warn">empty</span> The round record lists nothing here. That does not mean everything was checked.</p>{{end}}
 {{if .Derived}}<p class="note">Also not covered, read from the round record by this page:</p><ul>{{range .Derived}}<li>{{.}}</li>{{end}}</ul>{{end}}
 
-<footer>{{bi (printf "Built from .go-anything/checks/%s/round-NN.json and the recording's .defects.json. Rebuilt after every round; safe to delete." .Unit) (printf ".go-anything/checks/%s/round-NN.json과 녹화의 .defects.json에서 만든 페이지입니다. 매 라운드 뒤 다시 생성되며 삭제해도 안전합니다." .Unit)}}</footer>
+<footer>{{bi (printf "Built from .go-anything/checks/%s/round-NN.json and the recording's .defects.json. Rebuilt after every round; safe to delete." .Unit) (printf ".go-anything/checks/%s/round-NN.json과 기록의 .defects.json에서 만든 페이지입니다. 매 라운드 뒤 다시 생성되며 삭제해도 안전합니다." .Unit)}}</footer>
 </body>
 </html>
 `))

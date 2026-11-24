@@ -35,9 +35,9 @@ Release binaries for linux, darwin and windows come from `go-anything package`, 
 | Feature | Status | What it does |
 |---|:---:|---|
 | `record` / `verify` | ✅ | CLI recording and rewrite judging (`-json-body`, `-float-tolerance`, `-normalize`) |
-| `app record` / `app replay` | ✅ | Whole-service recording and replay, `-repeat` instability detection, `-case` single replay |
+| `app record` / `app replay` | ✅ | Whole-service recording and replay, `-repeat` instability detection, `-case` single replay. `app record` also takes `-delay-ms` `-retries` `-retry-delay-ms`, which retry transport failures only (refused, dropped, body read); an HTTP status is an answer and is never retried |
 | `wire gen` | ✅ | Unit scaffold + `main.go` mount; `-agent` writes the first rewrite from recorded behavior |
-| `wire refine` (RSI loop) | ✅ | Probe, ask the original, record, agent fix, convergence verdict |
+| `wire refine` (RSI loop) | ✅ | Probe, ask the original, record, agent fix, convergence verdict. `-delay-ms` `-retries` `-retry-delay-ms` apply to the probes sent to the ORIGINAL side only, retrying connection-level failures only (a connection accepted and then dropped is an original defect). `-concurrency N` (HTTP units, default 0 = off) fires each recorded case N times at once at both sides and judges answer consistency: a rewrite that answers identical concurrent requests differently is a divergence that blocks the round's convergence, while a failed send or a nondeterministic original stays a pending verdict recorded in the round record and the convergence summary. The blocking rule is a go-anything extension (the ported original reports divergence outside the loop). Only identical-request consistency is checked, so interleavings of distinct requests remain unchecked. `-chains N` (HTTP units, default 0 = off) walks each recorded collection after the probes agree: it creates a resource named with the reserved `chain-rN-…` name, then reads, mutates and deletes that one resource, comparing the two sides step by step — a rewrite that only replays the recording collapses on these new requests. A chain touches its own reserved-name resources only; on a target whose recording never observed DELETE the created resource stays behind on the original; an unjudgeable chain (a failed send, or a 5xx or transcript surprise from the original) blocks the round's convergence. `-serve-original '<command>'` (HTTP units, off by default) starts a fresh copy of the original with this shell command at the top of every round and stops it when the round ends — state the original accumulated in earlier rounds never colors a round's verdicts, and the two sides stay symmetric (the rewrite restarts every round already). `{{port}}` in the command is replaced by the port the tool picks (a missing placeholder logs a warning); readiness is any HTTP status answer (default 60 s, tunable with `-original-start-timeout`). The original inherits the WHOLE parent environment on purpose — it is the operator's own program, so the environment allowlist applied to the agent-generated rewrite does not apply to it — and runs in this tool's working directory. A failed start reports only the last 2000 bytes of the process output (the full inheritance can put configuration values and secrets into that output). It cannot be combined with `-original-url` and is Unix only, because the command runs through sh. With the option on, the original's state resets every round, so authorization-check and recorded-case comparison results can differ from the default run (state-dependent mismatches disappear), and chain-check `chain-rN-…` resources stay behind on that round's original when DELETE was never observed in the recording |
 | `wire verify` / `set` / `status` | ✅ | Per-unit verification, unit switching, defect policy query |
 | Live application probing | ✅ | Through the assembled `main.go`; process ownership verified, foreign listeners refused, one request builder for both sides |
 | CLI probe isolation | ✅ | One child process per probe with a timeout; `os.Exit` cannot kill the harness; every exit shape becomes that probe's answer |
@@ -116,7 +116,7 @@ go-anything is a Go-native rethinking of the same job, not a port. The tool surf
 - The refine loop with an agent in the loop, round ledgers and convergence rules is go-anything's core.
 - Structural RBAC checking and the Korean security function confirmation checklist do not exist in rust-anything.
 - rust-anything pins the clock inside the original's runtime (napi and Python monkey-patching). go-anything does not patch foreign runtimes; it detects instability at record time (`-repeat`), masks volatile values at compare time (`-normalize`), and reports what it could not check.
-- Compare options are equivalent: `ignore_key_order` → `-json-body`, `float_tolerance` → `-float-tolerance`, `case` → `app replay -case`, `normalize` → `-normalize`.
+- Compare options are equivalent: `ignore_key_order` → `-json-body`, `float_tolerance` → `-float-tolerance`, `case` → `app replay -case`, `normalize` → `-normalize` (built-ins: `timestamps`, `uuids`, `host_urls`, `counts`, `tokens`, `session_ids`, `oauth`, plus `name=regex`; every built-in mask keeps a JSON answer valid, and only `counts` masks a number, as a quoted string).
 
 ## Project layout
 
@@ -146,9 +146,9 @@ Modified MIT + Commons Clause + 미디어 제한. 전문은 [`LICENSE`](./LICENS
 
 ## 한국어 요약
 
-go-anything은 원본 프로그램의 동작을 기록하고, Go 재작성이 그 동작과 일치하는지 검증하며, 불일치를 에이전트가 고치는 루프를 수렴시킬 때까지 돌리는 마이그레이션 도구입니다.
+go-anything은 원본 프로그램의 동작을 기록하고, Go 재작성이 그 동작과 일치하는지 검증하며, 불일치를 에이전트가 고치는 루프를 일치 완료시킬 때까지 돌리는 마이그레이션 도구입니다.
 
-- `record`와 `verify`로 시작하고, `wire refine`이 프로브, 기록, 에이전트 수정, 수렴 판정을 라운드마다 반복합니다. 수렴은 서로 다른 시드에서 연속 두 라운드 깨끗할 때만 선언합니다.
+- `record`와 `verify`로 시작하고, `wire refine`이 점검 요청, 기록, 에이전트 수정, 일치 완료 판정을 라운드마다 반복합니다. 일치 완료는 서로 다른 시드에서 연속 두 라운드가 불일치 0일 때만 선언합니다.
 - `secure`는 국가정보원 국가용 보안요구사항(서버 공통 V3.0 R1)의 조항 29개 전부를 Go 모듈 검사 항목으로 연결한 확인서 체크리스트입니다. 자동 검사와 사람 확인 항목이 이중언어로 구분되고, 게이트는 옵션입니다.
 - `rbac`은 요청마다 주체를 바꿔 보내 허용과 거부를 정책과 대비하는 구조적 권한 검사입니다. B2B 테넌트 누수가 이 검사의 존재 이유입니다.
 - 보고서는 HTML로 나오고, 보안 확인서 리포트만 한국어 우선, 나머지는 영어 우선 한국어 차선입니다.
